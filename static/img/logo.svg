@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <!-- Konsep 3: "Dual Read" - satu batang dibaca dua kali: jadi punggung D sekaligus tiang J -->
+  <rect width="320" height="320" rx="28" fill="#16203A"/>
+  <!-- Setengah lingkaran solid = esensi huruf D -->
+  <path d="M 156 64 A 96 96 0 0 1 156 256 Z" fill="#F7F6F3"/>
+  <!-- Batang + kait J monoline (aksen emas) -->
+  <path d="M 120 64 L 120 224 C 120 256 99 266 80 266 C 65 266 54 258 50 243"
+        fill="none" stroke="#C5A14E" stroke-width="17" stroke-linecap="round"/>
+</svg>

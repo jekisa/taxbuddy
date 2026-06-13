@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RetailInvoiceBulk>
+	<TIN>0313125718036000</TIN>
+	<TaxPeriodMonth>08</TaxPeriodMonth>
+	<TaxPeriodYear>2025</TaxPeriodYear>
+	<ListOfRetailInvoice>
+		<RetailInvoice>
+			<TrxCode>Normal</TrxCode>
+			<BuyerName>GAGAN NUSA PERKASA</BuyerName>
+			<BuyerIdOpt>NPWP</BuyerIdOpt>
+			<BuyerIdNumber>0313125718036000</BuyerIdNumber>
+			<GoodServiceOpt>A</GoodServiceOpt>
+			<SerialNo>PORT-004</SerialNo>
+			<TransactionDate>2025-09-26</TransactionDate>
+			<TaxBaseSellingPrice>1330410445.45</TaxBaseSellingPrice>
+			<OtherTaxBaseSellingPrice>1219542908.33</OtherTaxBaseSellingPrice>
+			<VAT>146345149</VAT>
+			<STLG>0</STLG>
+			<Info>0</Info>
+		</RetailInvoice>
+	</ListOfRetailInvoice>
+</RetailInvoiceBulk>

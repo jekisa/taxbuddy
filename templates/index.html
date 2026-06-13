@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pajak Keluaran Otomatis  v4.1</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <button id="sidebarToggle" class="sidebar-toggle" title="Sembunyikan sidebar">&#9776;</button>
+      <div class="brand-icon"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo"></div>
+      <div class="brand-title">PAJAK KELUARAN</div>
+      <div class="brand-sub">Otomatis&nbsp; v4.1</div>
+    </div>
+    <div class="hr"></div>
+    <nav id="nav"></nav>
+    <div class="spacer"></div>
+    <div class="hr"></div>
+    <div class="theme-switcher">
+      <label class="side-label">&#9728; Tema</label>
+      <select id="themeSelect" class="x-select"></select>
+    </div>
+    <div class="hr"></div>
+    <div class="export-section" id="exportSection"></div>
+    <div class="hr"></div>
+    <div class="file-label" id="fileLabel">File: belum ada</div>
+  </aside>
+
+  <div class="main">
+    <header id="topbar">
+      <div class="status" id="statusLabel"></div>
+      <div class="stats" id="statsFrame"></div>
+    </header>
+    <main id="body"></main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<div id="modal-root"></div>
+<div id="ctx-menu-root"></div>
+<input type="file" id="fileInput" accept=".xls,.xlsx" style="display:none">
+<input type="file" id="fileInputDlm" accept=".xls,.xlsx" style="display:none">
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

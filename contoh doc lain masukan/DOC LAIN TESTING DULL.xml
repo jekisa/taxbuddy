@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<InputSpecialDocBulk>
+	<TIN>0313125718036000</TIN>
+	<ListOfSpecialDoc>
+		<SpecialDoc>
+			<SpecialDocNo>BDSG20257574554</SpecialDocNo>
+			<SpecialDocDate>2025-06-30</SpecialDocDate>
+			<TrxType>04</TrxType>
+			<TrxCode>01</TrxCode>
+			<TrxDocument>8</TrxDocument>
+			<TaxPeriodMonth>6</TaxPeriodMonth>
+			<TaxPeriodYear>2025</TaxPeriodYear>
+			<TotalTaxBase>343422</TotalTaxBase>
+			<TotalVAT>34032.9</TotalVAT>
+			<TotalSTLG>0</TotalSTLG>
+			<SellerTin>0021628888053000</SellerTin>
+			<SellerName>TIKTOK PTE LTD</SellerName>
+		</SpecialDoc>
+		<SpecialDoc>
+			<SpecialDocNo>BDSG20257581379</SpecialDocNo>
+			<SpecialDocDate>2025-06-30</SpecialDocDate>
+			<TrxType>04</TrxType>
+			<TrxCode>01</TrxCode>
+			<TrxDocument>8</TrxDocument>
+			<TaxPeriodMonth>6</TaxPeriodMonth>
+			<TaxPeriodYear>2025</TaxPeriodYear>
+			<TotalTaxBase>355194</TotalTaxBase>
+			<TotalVAT>35199.45</TotalVAT>
+			<TotalSTLG>0</TotalSTLG>
+			<SellerTin>0021628888053000</SellerTin>
+			<SellerName>TIKTOK PTE LTD</SellerName>
+		</SpecialDoc>
+		<SpecialDoc>
+			<SpecialDocNo>BDSG20257594037</SpecialDocNo>
+			<SpecialDocDate>2025-06-30</SpecialDocDate>
+			<TrxType>04</TrxType>
+			<TrxCode>01</TrxCode>
+			<TrxDocument>8</TrxDocument>
+			<TaxPeriodMonth>6</TaxPeriodMonth>
+			<TaxPeriodYear>2025</TaxPeriodYear>
+			<TotalTaxBase>320080</TotalTaxBase>
+			<TotalVAT>31719.71</TotalVAT>
+			<TotalSTLG>0</TotalSTLG>
+			<SellerTin>0021628888053000</SellerTin>
+			<SellerName>TIKTOK PTE LTD</SellerName>
+		</SpecialDoc>
+		<SpecialDoc>
+			<SpecialDocNo>BDSG20257599514</SpecialDocNo>
+			<SpecialDocDate>2025-06-30</SpecialDocDate>
+			<TrxType>04</TrxType>
+			<TrxCode>01</TrxCode>
+			<TrxDocument>8</TrxDocument>
+			<TaxPeriodMonth>6</TaxPeriodMonth>
+			<TaxPeriodYear>2025</TaxPeriodYear>
+			<TotalTaxBase>323643</TotalTaxBase>
+			<TotalVAT>32072.81</TotalVAT>
+			<TotalSTLG>0</TotalSTLG>
+			<SellerTin>0021628888053000</SellerTin>
+			<SellerName>TIKTOK PTE LTD</SellerName>
+		</SpecialDoc>
+		<SpecialDoc>
+			<SpecialDocNo>BDSG20257599594</SpecialDocNo>
+			<SpecialDocDate>2025-06-30</SpecialDocDate>
+			<TrxType>04</TrxType>
+			<TrxCode>01</TrxCode>
+			<TrxDocument>8</TrxDocument>
+			<TaxPeriodMonth>6</TaxPeriodMonth>
+			<TaxPeriodYear>2025</TaxPeriodYear>
+			<TotalTaxBase>11100000</TotalTaxBase>
+			<TotalVAT>1100000</TotalVAT>
+			<TotalSTLG>0</TotalSTLG>
+			<SellerTin>0021628888053000</SellerTin>
+			<SellerName>TIKTOK PTE LTD</SellerName>
+		</SpecialDoc>
+	</ListOfSpecialDoc>
+</InputSpecialDocBulk>
