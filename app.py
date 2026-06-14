@@ -949,7 +949,7 @@ def generate_coretax_xml(processed_data,faktur_rows):
             SubElement(gs,"STLGRate").text="0"; SubElement(gs,"STLG").text="0"
     raw=tostring(root,encoding="unicode")
     pretty=minidom.parseString(raw).toprettyxml(indent="  ",encoding="utf-8").decode("utf-8")
-    return "﻿"+pretty
+    return pretty
 
 def generate_dlm_xml(processed_data,company_npwp=""):
     root=Element("InputSpecialDocBulk")
@@ -1205,6 +1205,7 @@ def process_data():
     st["processed"]=data; st["dup_map"]=dup
     st["faktur_rows"]=build_faktur_rows(data)
     st["totals"]=calc_totals(data)
+    apply_buyer_discounts_to_active_data(st,_jload(DB_PEMBELI_FILE))
     return jsonify({"state":public_state(st)})
 
 @app.route("/api/reset", methods=["POST"])
