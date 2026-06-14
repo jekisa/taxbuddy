@@ -1734,15 +1734,37 @@ function renderSummary() {
     summaryPill("DPP Nilai Lain", fmtIdr(t.dpp_nl || 0)) +
     summaryPill("PPN", fmtIdr(t.ppn || 0));
 }
+function fakturDateProblemSet() {
+  const diag = APP.state.date_diagnostics || {};
+  return new Set(diag.problem_indices || []);
+}
+function fakturDateDefaultValue() {
+  const rows = APP.state.faktur_rows || [];
+  const dates = Array.from(new Set(rows.map((r) => r.tgl_faktur).filter(Boolean)));
+  return dates.length === 1 ? dates[0] : "";
+}
 function fakturRowClass(r, i, selected) {
   const hasPenjual = !!(r.id_tku_penjual && r.id_tku_penjual.trim());
   const hasPembeli = !!((r.nama_pembeli && r.nama_pembeli.trim()) || (r.npwp_pembeli && r.npwp_pembeli.trim()));
+  const dateProblems = fakturDateProblemSet();
   let cls = i % 2 === 0 ? "row-a" : "row-b";
   if (hasPenjual && hasPembeli) cls = "faktur-filled";
   else if (hasPenjual) cls = "faktur-filled-p";
   else if (hasPembeli) cls = "faktur-filled-b";
+  if (dateProblems.has(i)) cls += " date-problem";
   if (selected) cls += " selected";
   return cls;
+}
+function renderDateAlertHtml() {
+  const diag = APP.state.date_diagnostics || {};
+  const items = [...(diag.blockers || []), ...(diag.warnings || [])];
+  if (!items.length) return "";
+  return `
+    <div class="date-alert">
+      <div class="date-alert-title">Tanggal Faktur perlu dicek</div>
+      <ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    </div>
+  `;
 }
 function renderFakturTable() {
   const st = APP.state;
@@ -1858,6 +1880,17 @@ function wireApplyPanel() {
       toast(`Pembeli "${data.name}" diterapkan ke ${data.label}.`, "success");
     } catch (err) { toast(err.message, "error"); }
   });
+  document.getElementById("btnApplyDate").addEventListener("click", async () => {
+    const tgl = document.getElementById("applyDateInput").value.trim();
+    const scope = document.getElementById("applyDateScope").value;
+    if (!tgl) { toast("Isi tanggal faktur dulu.", "warn"); return; }
+    if (scope === "sel" && APP.selFaktur.size === 0) { toast("Pilih baris faktur dulu (klik / Ctrl+klik).", "warn"); return; }
+    try {
+      const data = await apiPost("/api/faktur/date_bulk_apply", { tgl_faktur: tgl, scope, indices: Array.from(APP.selFaktur) });
+      applyState(data.state);
+      toast(`Tanggal ${data.tgl_faktur} diterapkan ke ${data.label}.`, "success");
+    } catch (err) { toast(err.message, "error"); }
+  });
   document.getElementById("btnApplyDefaults").addEventListener("click", async () => {
     const opt = document.getElementById("defOptSelect").value;
     const unit = document.getElementById("defUnitSelect").value;
@@ -1884,8 +1917,10 @@ function renderFakturView(body) {
   const dbPembeli = APP.bootstrap.db_pembeli || {};
   const optChoices = APP.bootstrap.detail_opt_choices;
   const unitChoices = APP.bootstrap.detail_unit_choices;
+  const dateDefault = fakturDateDefaultValue();
 
   wrap.innerHTML = `
+    ${renderDateAlertHtml()}
     <div class="apply-panel">
       <div class="apply-top">
         <div class="apply-ctrl">
@@ -1927,6 +1962,16 @@ function renderFakturView(body) {
           <div class="hdr">RINGKASAN TOTAL</div>
           <div class="summary-grid" id="applySummaryGrid"></div>
         </div>
+      </div>
+      <div class="date-apply-row">
+        <span class="lbl">TGL FAKTUR</span>
+        <input class="x-input" id="applyDateInput" placeholder="DD/MM/YYYY" value="${escapeHtml(dateDefault)}">
+        <select id="applyDateScope" class="x-select" style="width:170px;">
+          <option value="problem">Tanggal bermasalah</option>
+          <option value="all">Semua faktur</option>
+          <option value="sel">Baris terpilih</option>
+        </select>
+        <button class="pill pill-primary pill-sm" id="btnApplyDate">Terapkan</button>
       </div>
       <div class="detail-defaults-row">
         <span class="lbl">DEFAULT DETAIL FAKTUR</span>
@@ -2008,6 +2053,15 @@ function openFakturFillDialog(idx) {
   const dbPenjual = APP.bootstrap.db_penjual || {};
   const dbPembeli = APP.bootstrap.db_pembeli || {};
   const bodyHtml = `
+    <div class="modal-section">
+      <div class="sec-title">Faktur</div>
+      <div class="sec-body">
+        <div class="form-row">
+          <span class="flbl">Tgl Faktur</span>
+          <input class="x-input" id="fillTglFaktur" placeholder="DD/MM/YYYY" value="${escapeHtml(r.tgl_faktur || "")}">
+        </div>
+      </div>
+    </div>
     <div class="modal-section">
       <div class="sec-title">Penjual</div>
       <div class="sec-body">
@@ -2092,6 +2146,7 @@ function openFakturFillDialog(idx) {
 }
 async function submitFakturFill(idx, force) {
   const body = {
+    tgl_faktur: document.getElementById("fillTglFaktur").value.trim(),
     id_tku_penjual: document.getElementById("fillIdTkuPenjual").value.trim(),
     npwp_pembeli: document.getElementById("fillNpwpPembeli").value.trim(),
     no_dok_pembeli: document.getElementById("fillNoDokPembeli").value.trim(),

@@ -379,6 +379,26 @@ def autofit_columns(ws):
             except Exception: pass
         ws.column_dimensions[cl].width=min(mx+4,80)
 
+MONTH_NAME_TO_NUMBER = {
+    "jan":"01", "january":"01", "januari":"01",
+    "feb":"02", "february":"02", "februari":"02",
+    "mar":"03", "march":"03", "maret":"03",
+    "apr":"04", "april":"04",
+    "may":"05", "mei":"05",
+    "jun":"06", "june":"06", "juni":"06",
+    "jul":"07", "july":"07", "juli":"07",
+    "aug":"08", "august":"08", "agu":"08", "ags":"08", "agustus":"08",
+    "sep":"09", "sept":"09", "september":"09",
+    "oct":"10", "october":"10", "okt":"10", "oktober":"10",
+    "nov":"11", "november":"11",
+    "dec":"12", "december":"12", "des":"12", "desember":"12",
+}
+
+MONTH_LABELS_ID = {
+    1:"Januari", 2:"Februari", 3:"Maret", 4:"April", 5:"Mei", 6:"Juni",
+    7:"Juli", 8:"Agustus", 9:"September", 10:"Oktober", 11:"November", 12:"Desember",
+}
+
 def _date_to_iso(tgl):
     if not tgl: return ""
     if isinstance(tgl,(datetime,date)): return tgl.strftime("%Y-%m-%d")
@@ -391,12 +411,16 @@ def _date_to_iso(tgl):
         d,mn,y=m.groups()
         try: return datetime.strptime(f"{int(d):02d}/{int(mn):02d}/{y}","%d/%m/%Y").strftime("%Y-%m-%d")
         except ValueError: return tgl
-    months={"januari":"01","februari":"02","maret":"03","april":"04","mei":"05","juni":"06",
-             "juli":"07","agustus":"08","september":"09","oktober":"10","november":"11","desember":"12"}
-    m=re.match(r"(\d+)\s+(\w+)\s+(\d{4})",tgl,re.IGNORECASE)
+    m=re.match(r"(\d{1,2})\s+([A-Za-z.]+)\s+(\d{4})$",tgl,re.IGNORECASE)
     if m:
         d,mn,y=m.groups()
-        return f"{y}-{months.get(mn.lower(),'01')}-{int(d):02d}"
+        month=MONTH_NAME_TO_NUMBER.get(mn.rstrip(".").casefold())
+        if not month:
+            return tgl
+        try:
+            return datetime.strptime(f"{int(d):02d}/{month}/{y}","%d/%m/%Y").strftime("%Y-%m-%d")
+        except ValueError:
+            return tgl
     return tgl
 
 def _date_to_ddmmyyyy(tgl):
@@ -407,12 +431,73 @@ def _date_to_ddmmyyyy(tgl):
         return f"{d}/{mn}/{y}"
     return str(tgl or "").strip()
 
+def _normalize_invoice_date(tgl):
+    tgl=str(tgl or "").strip()
+    if not tgl:
+        return None
+    normalized=_date_to_ddmmyyyy(tgl)
+    if not _is_ddmmyyyy(normalized):
+        return None
+    return normalized
+
+def _parse_ddmmyyyy_date(tgl):
+    try:
+        return datetime.strptime(str(tgl or "").strip(),"%d/%m/%Y").date()
+    except ValueError:
+        return None
+
 def _is_ddmmyyyy(tgl):
     try:
         datetime.strptime(str(tgl or "").strip(),"%d/%m/%Y")
         return True
     except ValueError:
         return False
+
+def _short_date_row(r):
+    ref=str(r.get("referensi","")).strip() or f"baris {r.get('baris','')}".strip()
+    tgl=str(r.get("tgl_faktur","")).strip() or "-"
+    raw=str(r.get("tgl_raw","")).strip()
+    if raw and raw!=tgl:
+        return f"{ref}: {tgl} (sumber: {raw})"
+    return f"{ref}: {tgl}"
+
+def collect_faktur_date_diagnostics(faktur_rows):
+    invalid=[]; valid=[]
+    for i,r in enumerate(faktur_rows):
+        parsed=_parse_ddmmyyyy_date(r.get("tgl_faktur",""))
+        if parsed:
+            valid.append((i,r,parsed))
+        else:
+            invalid.append((i,r))
+
+    warnings=[]; blockers=[]; outliers=[]; majority_label=""
+    if invalid:
+        examples=", ".join(_short_date_row(r) for _i,r in invalid[:5])
+        blockers.append(f"Tanggal Faktur kosong/tidak valid: {len(invalid)} baris. Contoh: {examples}")
+
+    if valid:
+        month_counts=Counter((d.year,d.month) for _i,_r,d in valid)
+        (majority_year,majority_month),majority_count=month_counts.most_common(1)[0]
+        majority_label=f"{MONTH_LABELS_ID[majority_month]} {majority_year}"
+        if len(month_counts)>1 and majority_count>len(valid)/2:
+            outliers=[(i,r,d) for i,r,d in valid if (d.year,d.month)!=(majority_year,majority_month)]
+            if outliers:
+                examples=", ".join(_short_date_row(r) for _i,r,_d in outliers[:8])
+                warnings.append(
+                    f"Tanggal Faktur di luar bulan mayoritas {majority_label}: "
+                    f"{len(outliers)} baris. Contoh: {examples}"
+                )
+
+    invalid_indices=[i for i,_r in invalid]
+    outlier_indices=[i for i,_r,_d in outliers]
+    return {
+        "majority_month": majority_label,
+        "invalid_indices": invalid_indices,
+        "outlier_indices": outlier_indices,
+        "problem_indices": sorted(set(invalid_indices+outlier_indices)),
+        "warnings": warnings,
+        "blockers": blockers,
+    }
 
 def _cell_text(val):
     if val is None: return ""
@@ -463,8 +548,9 @@ def apply_mapping_and_process(headers,rows,mapping):
         qty=parse_num(get(row,"Kuantitas"))
         harga=parse_num(get(row,"Harga Satuan"))
         if qty==0 and harga==0: continue
+        raw_tgl=get(row,"Tgl Faktur")
         cleaned.append({"nama":get(row,"Nama Pelanggan"),"keterangan":get(row,"Keterangan Barang"),
-                         "faktur":faktur,"tgl":_date_to_ddmmyyyy(get(row,"Tgl Faktur")),
+                         "faktur":faktur,"tgl":_date_to_ddmmyyyy(raw_tgl),"tgl_raw":raw_tgl,
                          "qty":round2(qty),"harga":round2(harga),
                          "unit":get(row,"Unit 1 Barang"),"detail_opt":"A",
                          "detail_code":"000000","detail_unit":"UM.0021"})
@@ -582,6 +668,7 @@ def build_faktur_rows(processed_data):
         if r["faktur"] in seen: continue
         seen.add(r["faktur"])
         rows.append({"baris":str(baris),"tgl_faktur":r["tgl"],"jenis_faktur":"Normal",
+                      "tgl_raw":r.get("tgl_raw",""),
                       "kode_transaksi":"04","ket_tambahan":"","dok_pendukung":"",
                       "referensi":r["faktur"],"cap_fasilitas":"","id_tku_penjual":"",
                       "npwp_pembeli":"","jenis_id":"TIN","negara":"IDN","no_dok_pembeli":"",
@@ -621,6 +708,7 @@ def collect_export_warnings(faktur_rows,processed):
     def count(rows,pred):
         return sum(1 for r in rows if pred(r))
 
+    warns.extend(collect_faktur_date_diagnostics(faktur_rows)["warnings"])
     n=count(faktur_rows,lambda r:not _is_ddmmyyyy(r.get("tgl_faktur","")))
     if n: warns.append(f"Tanggal Faktur bukan format DD/MM/YYYY: {n} baris")
     n=count(faktur_rows,lambda r:len(str(r.get("id_tku_penjual","")).strip())!=22)
@@ -655,6 +743,7 @@ def collect_export_blockers(faktur_rows):
     def count(rows,pred):
         return sum(1 for r in rows if pred(r))
 
+    blockers.extend(collect_faktur_date_diagnostics(faktur_rows)["blockers"])
     n=count(faktur_rows,lambda r:len(str(r.get("id_tku_penjual","")).strip())!=22)
     if n: blockers.append(f"ID TKU Penjual wajib diisi 22 digit: {n} baris")
     n=count(faktur_rows,lambda r:not str(r.get("npwp_pembeli","")).strip())
@@ -718,6 +807,12 @@ def recalc_detail_for_refs(state,refs,diskon_pct):
         if r["faktur"] in refset:
             apply_tax_calculation(r,diskon_pct)
     state["totals"]=calc_totals(state["processed"])
+
+def apply_invoice_date_to_refs(state,refs,tgl):
+    refset=set(refs)
+    for r in state["processed"]:
+        if r["faktur"] in refset:
+            r["tgl"]=tgl
 
 
 # ---- Export XLSX ----------------------------------------------------------------
@@ -851,6 +946,14 @@ def export_faktur_sheet(ws,faktur_rows,npwp_penjual=""):
         wt(13,r["no_dok_pembeli"]); wl(14,r["nama_pembeli"]); wl(15,r["alamat_pembeli"])
         wt(16,r["email_pembeli"]); wt(17,r["id_tku_pembeli"])
         ws.row_dimensions[er].height=16
+    end_row=len(faktur_rows)+4
+    ce=ws.cell(row=end_row,column=1,value="END")
+    ce.font=Font(name="Calibri",size=11,bold=True)
+    ce.alignment=ca; ce.border=brd; ce.number_format="@"
+    for col in range(2,18):
+        c=ws.cell(row=end_row,column=col,value=None)
+        c.font=c11; c.alignment=ca; c.border=brd
+    ws.row_dimensions[end_row].height=16
     autofit_columns(ws); ws.freeze_panes="A4"
 
 def export_detail_faktur_sheet(ws,processed_data,faktur_rows):
@@ -1086,6 +1189,7 @@ def public_state(st):
         "processed": st["processed"],
         "dup_map": st["dup_map"],
         "faktur_rows": st["faktur_rows"],
+        "date_diagnostics": collect_faktur_date_diagnostics(st["faktur_rows"]),
         "detail_rows": build_detail_rows(st["processed"],st["faktur_rows"]),
         "totals": st["totals"],
         "dlm": public_dlm_state(st["dlm"]),
@@ -1376,12 +1480,44 @@ def faktur_bulk_apply():
     label="semua baris" if scope=="all" else f"{len(indices)} baris"
     return jsonify({"state":public_state(st),"label":label,"name":name})
 
+@app.route("/api/faktur/date_bulk_apply", methods=["POST"])
+def faktur_date_bulk_apply():
+    st=get_state()
+    data=request.get_json(force=True) or {}
+    tgl=_normalize_invoice_date(data.get("tgl_faktur"))
+    if not tgl:
+        return jsonify({"error":"Tanggal Faktur tidak valid. Gunakan DD/MM/YYYY, YYYY-MM-DD, atau format seperti 10 Jun 2026."}),400
+    scope=data.get("scope")
+    indices=data.get("indices",[]) or []
+    if scope=="all":
+        indices=list(range(len(st["faktur_rows"])))
+    elif scope=="problem":
+        indices=collect_faktur_date_diagnostics(st["faktur_rows"])["problem_indices"]
+    else:
+        indices=[i for i in indices if isinstance(i,int) and 0<=i<len(st["faktur_rows"])]
+    if not indices:
+        msg="Tidak ada tanggal bermasalah." if scope=="problem" else "Pilih baris faktur dulu (klik / Ctrl+klik)."
+        return jsonify({"error":msg}),400
+    refs=[]
+    for i in indices:
+        r=st["faktur_rows"][i]
+        r["tgl_faktur"]=tgl
+        refs.append(r["referensi"])
+    apply_invoice_date_to_refs(st,refs,tgl)
+    label="semua faktur" if scope=="all" else ("tanggal bermasalah" if scope=="problem" else f"{len(indices)} faktur")
+    return jsonify({"state":public_state(st),"label":label,"tgl_faktur":tgl})
+
 @app.route("/api/faktur/<int:idx>", methods=["POST"])
 def faktur_update(idx):
     st=get_state()
     if idx<0 or idx>=len(st["faktur_rows"]):
         return jsonify({"error":"Baris tidak ditemukan."}),404
     data=request.get_json(force=True) or {}
+    tgl=None
+    if "tgl_faktur" in data:
+        tgl=_normalize_invoice_date(data.get("tgl_faktur"))
+        if not tgl:
+            return jsonify({"error":"Tanggal Faktur tidak valid. Gunakan DD/MM/YYYY, YYYY-MM-DD, atau format seperti 10 Jun 2026."}),400
     id_tku=(data.get("id_tku_penjual") or "").strip()
     diskon_txt=str(data.get("diskon_rate") or "").replace("%","").strip()
     npwp=(data.get("npwp_pembeli") or "").strip()
@@ -1396,6 +1532,9 @@ def faktur_update(idx):
     if warns and not data.get("force"):
         return jsonify({"warnings":warns})
     r=st["faktur_rows"][idx]
+    if tgl:
+        r["tgl_faktur"]=tgl
+        apply_invoice_date_to_refs(st,[r["referensi"]],tgl)
     r["id_tku_penjual"]=id_tku; r["npwp_pembeli"]=npwp; r["no_dok_pembeli"]=no_dok
     r["nama_pembeli"]=nama; r["alamat_pembeli"]=alamat
     r["id_tku_pembeli"]=no_dok
