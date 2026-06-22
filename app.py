@@ -1125,6 +1125,41 @@ app.secret_key=_get_secret_key()
 app.json.ensure_ascii=False
 
 SESSIONS={}
+TRIAL_INVOICE_LIMIT = int(os.environ.get("TRIAL_INVOICE_LIMIT", "10"))
+PRICING_URL = "/auth?plan=professional"
+
+def trial_info(used=0):
+    return {
+        "plan": "Trial",
+        "limit": TRIAL_INVOICE_LIMIT,
+        "used": int(used or 0),
+        "remaining": max(TRIAL_INVOICE_LIMIT - int(used or 0), 0),
+        "pricing_url": PRICING_URL,
+        "locked_features": ["doc_lain_masukan", "spt_dokumen_lain"],
+    }
+
+def trial_upgrade_response(attempted, module_name="invoice"):
+    return jsonify({
+        "error": f"Paket Trial hanya bisa memproses maksimal {TRIAL_INVOICE_LIMIT} invoice. Upgrade package untuk memproses {attempted} {module_name}.",
+        "upgrade_required": True,
+        "plan": "Trial",
+        "limit": TRIAL_INVOICE_LIMIT,
+        "attempted": int(attempted or 0),
+        "pricing_url": PRICING_URL,
+        "packages": ["Starter", "Professional", "Enterprise"],
+    }), 402
+
+def trial_feature_locked_response(feature_name):
+    return jsonify({
+        "error": f"Fitur {feature_name} terkunci untuk paket Trial. Login dan pilih package Starter, Professional, atau Enterprise untuk membuka fitur ini.",
+        "upgrade_required": True,
+        "feature_locked": True,
+        "plan": "Trial",
+        "limit": TRIAL_INVOICE_LIMIT,
+        "attempted": 0,
+        "pricing_url": PRICING_URL,
+        "packages": ["Starter", "Professional", "Enterprise"],
+    }), 402
 
 def default_dlm_state():
     return {
@@ -1158,6 +1193,15 @@ def get_state():
     st.setdefault("sdl",default_sdl_state())
     return st
 
+@app.before_request
+def enforce_trial_feature_locks():
+    path=request.path or ""
+    if path.startswith("/api/dlm/") or path == "/api/dlm":
+        return trial_feature_locked_response("Doc Lain Masukan")
+    if path.startswith("/api/sdl/") or path == "/api/sdl":
+        return trial_feature_locked_response("SPT Dokumen Lain")
+    return None
+
 def public_dlm_state(dlm):
     return {
         "raw_headers": dlm["raw_headers"],
@@ -1180,6 +1224,9 @@ def public_sdl_state(sdl):
     }
 
 def public_state(st):
+    trial_used=max(len(st.get("faktur_rows",[])),
+                   len(st.get("dlm",{}).get("processed",[])),
+                   len(st.get("sdl",{}).get("processed",[])))
     return {
         "raw_headers": st["raw_headers"],
         "raw_preview": st["raw_rows"][:60],
@@ -1194,6 +1241,7 @@ def public_state(st):
         "totals": st["totals"],
         "dlm": public_dlm_state(st["dlm"]),
         "sdl": public_sdl_state(st["sdl"]),
+        "subscription": trial_info(trial_used),
     }
 
 def _safe_stem(filename):
@@ -1220,6 +1268,11 @@ def _record_export_history(st):
 # ---- Pages -------------------------------------------------------------------
 @app.route("/")
 def index():
+    return render_template("landing.html")
+
+
+@app.route("/app")
+def app_page():
     return render_template("index.html")
 
 
@@ -1306,8 +1359,11 @@ def process_data():
         data,dup=apply_mapping_and_process(st["raw_headers"],st["raw_rows"],st["mapping"])
     except Exception as e:
         return jsonify({"error":str(e)}),400
+    faktur_rows=build_faktur_rows(data)
+    if len(faktur_rows)>TRIAL_INVOICE_LIMIT:
+        return trial_upgrade_response(len(faktur_rows), "invoice Pajak Keluaran")
     st["processed"]=data; st["dup_map"]=dup
-    st["faktur_rows"]=build_faktur_rows(data)
+    st["faktur_rows"]=faktur_rows
     st["totals"]=calc_totals(data)
     apply_buyer_discounts_to_active_data(st,_jload(DB_PEMBELI_FILE))
     return jsonify({"state":public_state(st)})
@@ -1653,6 +1709,8 @@ def dlm_process_data():
         data=apply_dlm_mapping_and_process(dlm["raw_headers"],dlm["raw_rows"],dlm["mapping"])
     except Exception as e:
         return jsonify({"error":str(e)}),400
+    if len(data)>TRIAL_INVOICE_LIMIT:
+        return trial_upgrade_response(len(data), "dokumen Doc Lain Masukan")
     dlm["processed"]=data
     dlm["totals"]=calc_dlm_totals(data)
     return jsonify({"state":public_state(st)})
@@ -1760,6 +1818,8 @@ def sdl_reset():
 def sdl_add_row():
     st=get_state()
     sdl=st["sdl"]
+    if len(sdl["processed"])>=TRIAL_INVOICE_LIMIT:
+        return trial_upgrade_response(len(sdl["processed"])+1, "dokumen SPT")
     data=request.get_json(force=True) or {}
     missing=[]
     if not str(data.get("vat") or "").strip(): missing.append("PPN (VAT)")
@@ -2059,5 +2119,5 @@ def set_theme():
 
 
 if __name__=="__main__":
-    port = int(os.environ.get("PORT", 3000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="127.0.0.1",port=port,debug=False)

@@ -2,14 +2,20 @@
   "name": "cortexfull",
   "version": "1.0.0",
   "private": true,
-  "description": "Python Flask app for CORETAX/CORTEXFULL.",
+  "description": "Next.js frontend with Flask API backend for TaxBuddy.",
   "scripts": {
-    "build": "python -m py_compile app.py && node --check static/js/app.js && node --check public/static/js/app.js",
-    "dev": "python app.py",
-    "start": "python app.py"
+    "backend": "cross-env PORT=5000 python app.py",
+    "build": "python -m py_compile app.py && node --check static/js/app.js && node --check public/static/js/app.js && next build",
+    "dev": "concurrently -k -n NEXT,API -c cyan,green \"next dev\" \"npm run backend\"",
+    "start": "next start"
   },
   "dependencies": {
     "@tanstack/query-core": "^5.101.0",
-    "@tanstack/table-core": "^8.21.3"
+    "@tanstack/table-core": "^8.21.3",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   }
 }

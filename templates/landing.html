@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaxBuddy - SaaS Otomasi Coretax</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="landing-page">
+  <header class="landing-nav">
+    <a class="landing-brand" href="/">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="TaxBuddy">
+      <span>TaxBuddy</span>
+    </a>
+    <nav>
+      <a href="#features">Fitur</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="landing-nav-cta" href="/app">Open App</a>
+  </header>
+
+  <main>
+    <section class="landing-hero">
+      <div class="landing-hero-bg" aria-hidden="true"></div>
+      <div class="landing-hero-content">
+        <p class="landing-kicker">Coretax-ready tax automation</p>
+        <h1>TaxBuddy</h1>
+        <p class="landing-lead">SaaS untuk mengubah data Excel pajak menjadi file XLSX dan XML Coretax yang rapi, tervalidasi, dan siap di-export.</p>
+        <div class="landing-actions">
+          <a class="landing-btn primary" href="/app">Mulai Sekarang</a>
+          <a class="landing-btn secondary" href="#pricing">Lihat Paket</a>
+        </div>
+      </div>
+      <div class="product-preview" aria-label="Preview aplikasi TaxBuddy">
+        <div class="preview-top">
+          <span></span><span></span><span></span>
+          <strong>TaxBuddy Workspace</strong>
+        </div>
+        <div class="preview-body">
+          <aside>
+            <b>Dashboard</b>
+            <b>Pajak Keluaran</b>
+            <b>Doc Lain</b>
+            <b>Database</b>
+          </aside>
+          <section>
+            <div class="preview-stats">
+              <div><strong>1,284</strong><small>Total Baris</small></div>
+              <div><strong>312</strong><small>Faktur Unik</small></div>
+              <div><strong>0</strong><small>Blocking Error</small></div>
+            </div>
+            <div class="preview-table">
+              <div><span>No Faktur</span><span>Pembeli</span><span>Status</span></div>
+              <div><span>010.007</span><span>PT Nusantara</span><em>Ready</em></div>
+              <div><span>010.008</span><span>CV Sentosa</span><em>Mapped</em></div>
+              <div><span>010.009</span><span>PT Maju</span><em>Export</em></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-section" id="features">
+      <div class="section-heading">
+        <p>Fitur utama</p>
+        <h2>Dibuat untuk workflow pajak yang berulang, detail, dan sensitif format.</h2>
+      </div>
+      <div class="feature-grid">
+        <article>
+          <span>01</span>
+          <h3>Excel Mapping Otomatis</h3>
+          <p>Simpan template mapping kolom untuk format Excel yang sering dipakai, lalu proses file berikutnya lebih cepat.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h3>Export XML Coretax</h3>
+          <p>Generate XML Coretax untuk Pajak Keluaran, Doc Lain Masukan, dan SPT Dokumen Lain dari satu workspace.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <h3>Database Lawan Transaksi</h3>
+          <p>Kelola penjual, pembeli, pemasok, NPWP, alamat, diskon, dan default transaksi agar data konsisten.</p>
+        </article>
+        <article>
+          <span>04</span>
+          <h3>Validasi Sebelum Export</h3>
+          <p>Peringatan tanggal, data wajib, duplikat, dan field kosong membantu mengurangi revisi file.</p>
+        </article>
+        <article>
+          <span>05</span>
+          <h3>Dashboard Riwayat</h3>
+          <p>Lacak faktur yang sudah di-export ke XML sehingga tim punya jejak kerja yang jelas.</p>
+        </article>
+        <article>
+          <span>06</span>
+          <h3>Responsive Workspace</h3>
+          <p>UI modern dengan tabel TanStack, search, sorting, dan pagination untuk data besar.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="workflow-band">
+      <div>
+        <p>Workflow</p>
+        <h2>Upload, mapping, validasi, export.</h2>
+      </div>
+      <ol>
+        <li><b>Upload Excel</b><span>Ambil file transaksi dari sistem penjualan atau pembelian.</span></li>
+        <li><b>Apply Template</b><span>Gunakan mapping tersimpan untuk menekan pekerjaan manual.</span></li>
+        <li><b>Review Data</b><span>Cek tabel, warning, database pembeli/pemasok, dan detail transaksi.</span></li>
+        <li><b>Export Coretax</b><span>Unduh XLSX atau XML yang siap dipakai untuk pelaporan.</span></li>
+      </ol>
+    </section>
+
+    <section class="landing-section" id="pricing">
+      <div class="section-heading">
+        <p>Pricing package</p>
+        <h2>Pilih paket sesuai ukuran tim dan volume pekerjaan pajak.</h2>
+      </div>
+      <div class="pricing-grid">
+        <article class="price-card trial">
+          <h3>Trial</h3>
+          <p class="price">Gratis</p>
+          <p>Untuk mencoba workflow TaxBuddy sebelum memilih package berbayar.</p>
+          <ul>
+            <li>Maksimal 10 invoice</li>
+            <li>Upload & mapping Excel</li>
+            <li>Preview tabel data</li>
+            <li>Upgrade saat butuh proses lebih banyak</li>
+          </ul>
+          <a href="/app">Mulai Trial</a>
+        </article>
+        <article class="price-card">
+          <h3>Starter</h3>
+          <p class="price">Rp299k<span>/bulan</span></p>
+          <p>Untuk konsultan atau bisnis kecil yang mulai merapikan proses Coretax.</p>
+          <ul>
+            <li>1 workspace</li>
+            <li>500 baris proses per bulan</li>
+            <li>Template mapping dasar</li>
+            <li>Export XLSX & XML</li>
+          </ul>
+          <a href="/app">Coba Starter</a>
+        </article>
+        <article class="price-card featured">
+          <div class="badge">Most popular</div>
+          <h3>Professional</h3>
+          <p class="price">Rp799k<span>/bulan</span></p>
+          <p>Untuk tim pajak yang rutin mengolah banyak file dan butuh database transaksi.</p>
+          <ul>
+            <li>5 user seat</li>
+            <li>10.000 baris proses per bulan</li>
+            <li>Database penjual, pembeli, pemasok</li>
+            <li>Dashboard riwayat export</li>
+            <li>Priority support</li>
+          </ul>
+          <a href="/app">Mulai Professional</a>
+        </article>
+        <article class="price-card">
+          <h3>Enterprise</h3>
+          <p class="price">Custom</p>
+          <p>Untuk perusahaan dengan kebutuhan volume tinggi, audit trail, dan deployment khusus.</p>
+          <ul>
+            <li>Unlimited workspace</li>
+            <li>Custom approval flow</li>
+            <li>Dedicated onboarding</li>
+            <li>SLA & support prioritas</li>
+          </ul>
+          <a href="/app">Hubungi Sales</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="faq-section" id="faq">
+      <div class="section-heading">
+        <p>FAQ</p>
+        <h2>Pertanyaan singkat sebelum mulai.</h2>
+      </div>
+      <div class="faq-list">
+        <details open>
+          <summary>Apakah TaxBuddy menggantikan Coretax?</summary>
+          <p>Tidak. TaxBuddy membantu menyiapkan data dan file export agar lebih siap digunakan di Coretax.</p>
+        </details>
+        <details>
+          <summary>Apakah bisa dipakai untuk banyak format Excel?</summary>
+          <p>Bisa. Template mapping membantu menyimpan format kolom yang berbeda untuk dipakai ulang.</p>
+        </details>
+        <details>
+          <summary>Apakah data tersimpan?</summary>
+          <p>Aplikasi ini punya database lokal untuk template, pembeli, penjual, pemasok, dan riwayat export.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="landing-footer">
+    <span>TaxBuddy</span>
+    <a href="/app">Open App</a>
+  </footer>
+</body>
+</html>

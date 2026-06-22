@@ -28,10 +28,14 @@ class ApiError extends Error {
 }
 
 /* ==================== API HELPERS ==================== */
+function handleApiError(res, data) {
+  if (data && data.upgrade_required) showUpgradeModal(data);
+  throw new ApiError((data && data.error) || "Terjadi kesalahan.", data);
+}
 async function apiGet(url) {
   const res = await fetch(url);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error || "Terjadi kesalahan.", data);
+  if (!res.ok) handleApiError(res, data);
   return data;
 }
 async function apiPost(url, body) {
@@ -41,13 +45,13 @@ async function apiPost(url, body) {
     body: body !== undefined ? JSON.stringify(body) : "{}",
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error || "Terjadi kesalahan.", data);
+  if (!res.ok) handleApiError(res, data);
   return data;
 }
 async function apiDelete(url) {
   const res = await fetch(url, { method: "DELETE" });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error || "Terjadi kesalahan.", data);
+  if (!res.ok) handleApiError(res, data);
   return data;
 }
 async function loadTanStack() {
@@ -130,6 +134,7 @@ const ICONS = {
   folderOpen: '<path d="M6 14 4.6 20A2 2 0 0 0 6.5 22h11a2 2 0 0 0 1.9-1.5L21 12H7.5A2 2 0 0 0 6 14z"/><path d="M3 18V6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v3"/>',
   hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
   layoutDashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
   package: '<path d="m16.5 9.4-9-5.2"/><path d="m21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
   panelLeft: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
@@ -230,6 +235,7 @@ const NAV_ICON_MAP = {
 function buildNav() {
   const nav = document.getElementById("nav");
   nav.innerHTML = "";
+  const locked = new Set(((APP.state && APP.state.subscription) || {}).locked_features || []);
   NAV_ITEMS.forEach((item) => {
     if (item.divider) {
       const d = document.createElement("div");
@@ -238,20 +244,43 @@ function buildNav() {
       return;
     }
     const el = document.createElement("div");
-    el.className = "nav-item" + (APP.view === item.id ? " active" : "");
-    el.title = item.label;
-    el.innerHTML = `<span class="nav-icon">${icon(NAV_ICON_MAP[item.id] || item.icon)}</span><span class="nav-text">${item.label}</span>`;
+    const isLocked = locked.has(item.id);
+    el.className = "nav-item" + (APP.view === item.id ? " active" : "") + (isLocked ? " locked" : "");
+    el.title = isLocked ? `${item.label} terkunci untuk paket Trial` : item.label;
+    el.innerHTML = `<span class="nav-icon">${icon(NAV_ICON_MAP[item.id] || item.icon)}</span><span class="nav-text">${item.label}</span>${isLocked ? `<span class="nav-lock">${icon("lock")}</span>` : ""}`;
     el.addEventListener("click", () => onNavClick(item.id));
     nav.appendChild(el);
   });
 }
 function onNavClick(id) {
+  const locked = new Set(((APP.state && APP.state.subscription) || {}).locked_features || []);
+  if (locked.has(id)) {
+    showUpgradeModal({
+      error: id === "doc_lain_masukan"
+        ? "Doc Lain Masukan terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini."
+        : "SPT Dokumen Lain terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini.",
+      upgrade_required: true,
+      feature_locked: true,
+      limit: ((APP.state && APP.state.subscription) || {}).limit || 10,
+      pricing_url: "/auth?plan=professional",
+    });
+    return;
+  }
   if (id === "database") { openDatabaseModal(); return; }
   APP.view = id;
   render();
 }
 function statPill(label, value) {
   return `<div class="stat-pill"><div class="stat-value">${value}</div><div class="stat-label">${escapeHtml(label)}</div></div>`;
+}
+function trialStatPill(used) {
+  const sub = (APP.state && APP.state.subscription) || { limit: 10 };
+  const limit = sub.limit || 10;
+  return `<button class="stat-pill trial-pill" id="trialUpgradePill" title="Lihat pricing package"><div class="stat-value">${used}/${limit}</div><div class="stat-label">Trial Invoice</div></button>`;
+}
+function wireTrialPill() {
+  const pill = document.getElementById("trialUpgradePill");
+  if (pill) pill.addEventListener("click", () => { window.location.href = "/#pricing"; });
 }
 function refreshTopbar() {
   const st = APP.state;
@@ -261,7 +290,9 @@ function refreshTopbar() {
     document.getElementById("statsFrame").innerHTML =
       statPill("Total Dokumen", totalDoc) +
       statPill("Total DPP", fmtIdr((sdl.totals || {}).tax_base || 0)) +
-      statPill("Total PPN", fmtIdr((sdl.totals || {}).vat || 0));
+      statPill("Total PPN", fmtIdr((sdl.totals || {}).vat || 0)) +
+      trialStatPill(totalDoc);
+    wireTrialPill();
 
     let status;
     if (!totalDoc) {
@@ -279,7 +310,9 @@ function refreshTopbar() {
     document.getElementById("statsFrame").innerHTML =
       statPill("Total Dokumen", totalDoc) +
       statPill("Total DPP", fmtIdr((dlm.totals || {}).tax_base || 0)) +
-      statPill("Total PPN", fmtIdr((dlm.totals || {}).vat || 0));
+      statPill("Total PPN", fmtIdr((dlm.totals || {}).vat || 0)) +
+      trialStatPill(totalDoc);
+    wireTrialPill();
 
     let status;
     if (!dlm.raw_headers.length) {
@@ -299,7 +332,9 @@ function refreshTopbar() {
   document.getElementById("statsFrame").innerHTML =
     statPill("Total Baris", totalBaris) +
     statPill("Faktur Unik", fakturUnik) +
-    statPill("Duplikat", duplikat);
+    statPill("Duplikat", duplikat) +
+    trialStatPill(fakturUnik);
+  wireTrialPill();
 
   let status;
   if (!st.raw_headers.length) {
@@ -379,6 +414,38 @@ function openModal({ title, subtitle, bodyHtml, footerHtml, width, onMount, clos
 function closeModal() {
   const overlay = document.getElementById("activeModalOverlay");
   if (overlay) overlay.remove();
+}
+function showUpgradeModal(data = {}) {
+  const limit = data.limit || 10;
+  const attempted = data.attempted || limit + 1;
+  const pricingUrl = data.pricing_url || "/#pricing";
+  const bodyHtml = `
+    <div class="upgrade-modal">
+      <div class="upgrade-badge">Trial limit reached</div>
+      <h3>Paket Trial hanya untuk ${limit} invoice.</h3>
+      <p>${escapeHtml(data.error || `Anda mencoba memproses ${attempted} invoice. Upgrade package untuk melanjutkan proses data tanpa batas trial.`)}</p>
+      <div class="upgrade-package-row">
+        <div><b>Starter</b><span>Untuk volume kecil dan export rutin.</span></div>
+        <div><b>Professional</b><span>Untuk tim pajak dengan database dan riwayat.</span></div>
+        <div><b>Enterprise</b><span>Untuk volume tinggi dan kebutuhan khusus.</span></div>
+      </div>
+    </div>
+  `;
+  const footerHtml = `
+    <button class="pill pill-ghost" id="upgradeLaterBtn">Nanti</button>
+    <button class="pill pill-primary" id="upgradeNowBtn">${icon("arrowRight")} Lihat Pricing</button>
+  `;
+  openModal({
+    title: "Upgrade Package",
+    subtitle: "Trial package sudah mencapai batas proses invoice.",
+    bodyHtml, footerHtml, width: "680px",
+    onMount: (modal) => {
+      modal.querySelector("#upgradeLaterBtn").addEventListener("click", closeModal);
+      modal.querySelector("#upgradeNowBtn").addEventListener("click", () => {
+        window.location.href = pricingUrl;
+      });
+    },
+  });
 }
 
 /* ==================== CONTEXT MENU ==================== */
@@ -3037,4 +3104,8 @@ async function init() {
   wireGlobalEvents();
   render();
 }
-document.addEventListener("DOMContentLoaded", init);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init, { once: true });
+} else {
+  init();
+}
