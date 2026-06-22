@@ -3,7 +3,7 @@ Pajak Keluaran Otomatis - Web Edition
 Flask backend porting the original Tkinter desktop logic.
 """
 
-import os, re, io, json, uuid, shutil
+import os, re, io, json, uuid, shutil, hmac, hashlib, base64, time
 from datetime import datetime, date
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from collections import defaultdict, Counter
@@ -63,6 +63,15 @@ REQUIRED_FIELDS = set(TPK_FIELDS)
 
 # ---- THEMES ----------------------------------------------------------------
 THEMES = {
+    "Color Hunt": {
+        "bg":"#EDE9E6","surface":"#F7F3EF","surface2":"#E4DDD8","surface3":"#D7C9BE",
+        "border":"#CDBFB5","border2":"#9F8B80",
+        "accent":"#C9996B","accent2":"#5C766D","accent_dim":"#E6D2BF",
+        "gold":"#C9996B","green":"#5C766D","red":"#A65F55","purple":"#7B635B",
+        "text":"#2F2926","text2":"#5C4F4A","text3":"#7A6D67",
+        "row_a":"#F7F3EF","row_b":"#E8E1DC","row_sel":"#D9C2AB","row_hdr":"#5C4F4A",
+        "sidebar_w": 230,
+    },
     "Dark Executive": {
         "bg":"#111827","surface":"#172033","surface2":"#1F2937","surface3":"#273449",
         "border":"#334155","border2":"#475569",
@@ -1127,6 +1136,8 @@ app.json.ensure_ascii=False
 SESSIONS={}
 TRIAL_INVOICE_LIMIT = int(os.environ.get("TRIAL_INVOICE_LIMIT", "10"))
 PRICING_URL = "/auth?plan=professional"
+SESSION_SECRET = os.environ.get("SESSION_SECRET") or "taxbuddy-dev-session-secret"
+ALL_LOCKED_FEATURES = ["dashboard", "pajak_keluaran", "doc_lain_masukan", "spt_dokumen_lain", "database"]
 
 def trial_info(used=0):
     return {
@@ -1137,6 +1148,66 @@ def trial_info(used=0):
         "pricing_url": PRICING_URL,
         "locked_features": ["doc_lain_masukan", "spt_dokumen_lain"],
     }
+
+def _b64url_decode(text):
+    raw=str(text or "")
+    raw += "=" * (-len(raw) % 4)
+    return base64.urlsafe_b64decode(raw.encode("utf-8"))
+
+def entitlement_from_cookie():
+    token=request.cookies.get("taxbuddy_entitlement")
+    if not token or "." not in token:
+        return None
+    try:
+        payload,sig=token.split(".",1)
+        expected=hmac.new(SESSION_SECRET.encode("utf-8"),payload.encode("utf-8"),hashlib.sha256).digest()
+        actual=_b64url_decode(sig)
+        if not hmac.compare_digest(expected,actual):
+            return None
+        data=json.loads(_b64url_decode(payload).decode("utf-8"))
+        if data.get("exp") and float(data["exp"]) < time.time()*1000:
+            return None
+        if data.get("expiresAt"):
+            try:
+                expires=datetime.fromisoformat(str(data["expiresAt"]).replace("Z","+00:00"))
+                if expires.timestamp() <= time.time():
+                    data["status"]="expired"
+            except ValueError:
+                pass
+        return data
+    except Exception:
+        return None
+
+def subscription_info(used=0):
+    ent=entitlement_from_cookie()
+    if not ent:
+        return trial_info(used)
+    if ent.get("status")=="active":
+        return {
+            "plan": ent.get("plan") or "Active",
+            "status": "active",
+            "limit": ent.get("limit"),
+            "used": int(used or 0),
+            "remaining": None if ent.get("limit") in (None,"") else max(int(ent.get("limit") or 0)-int(used or 0),0),
+            "pricing_url": ent.get("pricing_url") or PRICING_URL,
+            "locked_features": [],
+            "expiresAt": ent.get("expiresAt"),
+        }
+    if ent.get("status")=="expired":
+        return {
+            "plan": ent.get("plan") or "Expired",
+            "status": "expired",
+            "limit": 0,
+            "used": int(used or 0),
+            "remaining": 0,
+            "pricing_url": ent.get("pricing_url") or PRICING_URL,
+            "locked_features": ALL_LOCKED_FEATURES,
+            "expiresAt": ent.get("expiresAt"),
+        }
+    return trial_info(used)
+
+def is_trial_access():
+    return subscription_info().get("status") != "active"
 
 def trial_upgrade_response(attempted, module_name="invoice"):
     return jsonify({
@@ -1156,6 +1227,18 @@ def trial_feature_locked_response(feature_name):
         "feature_locked": True,
         "plan": "Trial",
         "limit": TRIAL_INVOICE_LIMIT,
+        "attempted": 0,
+        "pricing_url": PRICING_URL,
+        "packages": ["Starter", "Professional", "Enterprise"],
+    }), 402
+
+def subscription_expired_response():
+    return jsonify({
+        "error": "Masa berlangganan sudah habis. Perpanjang package untuk membuka kembali seluruh menu.",
+        "upgrade_required": True,
+        "subscription_expired": True,
+        "plan": "Expired",
+        "limit": 0,
         "attempted": 0,
         "pricing_url": PRICING_URL,
         "packages": ["Starter", "Professional", "Enterprise"],
@@ -1196,6 +1279,11 @@ def get_state():
 @app.before_request
 def enforce_trial_feature_locks():
     path=request.path or ""
+    sub=subscription_info()
+    if sub.get("status")=="expired" and path.startswith("/api/") and path not in ("/api/bootstrap", "/api/settings/theme"):
+        return subscription_expired_response()
+    if sub.get("status")=="active":
+        return None
     if path.startswith("/api/dlm/") or path == "/api/dlm":
         return trial_feature_locked_response("Doc Lain Masukan")
     if path.startswith("/api/sdl/") or path == "/api/sdl":
@@ -1241,7 +1329,7 @@ def public_state(st):
         "totals": st["totals"],
         "dlm": public_dlm_state(st["dlm"]),
         "sdl": public_sdl_state(st["sdl"]),
-        "subscription": trial_info(trial_used),
+        "subscription": subscription_info(trial_used),
     }
 
 def _safe_stem(filename):
@@ -1281,8 +1369,8 @@ def app_page():
 def bootstrap():
     st=get_state()
     settings=_jload(SETTINGS_FILE)
-    theme=settings.get("theme","Dark Executive")
-    if theme not in THEMES: theme="Dark Executive"
+    theme=settings.get("theme","Color Hunt")
+    if theme not in THEMES: theme="Color Hunt"
     return jsonify({
         "themes": THEMES,
         "theme_names": list(THEMES.keys()),
@@ -1360,7 +1448,7 @@ def process_data():
     except Exception as e:
         return jsonify({"error":str(e)}),400
     faktur_rows=build_faktur_rows(data)
-    if len(faktur_rows)>TRIAL_INVOICE_LIMIT:
+    if is_trial_access() and len(faktur_rows)>TRIAL_INVOICE_LIMIT:
         return trial_upgrade_response(len(faktur_rows), "invoice Pajak Keluaran")
     st["processed"]=data; st["dup_map"]=dup
     st["faktur_rows"]=faktur_rows
@@ -1709,7 +1797,7 @@ def dlm_process_data():
         data=apply_dlm_mapping_and_process(dlm["raw_headers"],dlm["raw_rows"],dlm["mapping"])
     except Exception as e:
         return jsonify({"error":str(e)}),400
-    if len(data)>TRIAL_INVOICE_LIMIT:
+    if is_trial_access() and len(data)>TRIAL_INVOICE_LIMIT:
         return trial_upgrade_response(len(data), "dokumen Doc Lain Masukan")
     dlm["processed"]=data
     dlm["totals"]=calc_dlm_totals(data)
@@ -1818,7 +1906,7 @@ def sdl_reset():
 def sdl_add_row():
     st=get_state()
     sdl=st["sdl"]
-    if len(sdl["processed"])>=TRIAL_INVOICE_LIMIT:
+    if is_trial_access() and len(sdl["processed"])>=TRIAL_INVOICE_LIMIT:
         return trial_upgrade_response(len(sdl["processed"])+1, "dokumen SPT")
     data=request.get_json(force=True) or {}
     missing=[]

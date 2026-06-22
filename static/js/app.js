@@ -21,6 +21,7 @@ const APP = {
   tableCore: null,
   queryCore: null,
   queryClient: null,
+  auth: null,
 };
 
 class ApiError extends Error {
@@ -53,6 +54,17 @@ async function apiDelete(url) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) handleApiError(res, data);
   return data;
+}
+async function loadAuthSession() {
+  try {
+    const res = await fetch("/api/auth/session", { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return null;
+    APP.auth = data;
+    return data;
+  } catch (err) {
+    return null;
+  }
 }
 async function loadTanStack() {
   try {
@@ -232,6 +244,22 @@ const NAV_ICON_MAP = {
   spt_dokumen_lain: "bookOpen",
   database: "database",
 };
+function authSubscriptionAccess() {
+  return (((APP.auth || {}).subscription || {}).access) || null;
+}
+function mergedSubscription(base) {
+  const access = authSubscriptionAccess();
+  if (!access) return base;
+  return {
+    ...(base || {}),
+    ...access,
+    plan: access.plan || (((APP.auth || {}).subscription || {}).plan) || (base || {}).plan,
+  };
+}
+function isSubscriptionExpired() {
+  const sub = (APP.state && APP.state.subscription) || {};
+  return sub.status === "expired";
+}
 function buildNav() {
   const nav = document.getElementById("nav");
   nav.innerHTML = "";
@@ -246,7 +274,7 @@ function buildNav() {
     const el = document.createElement("div");
     const isLocked = locked.has(item.id);
     el.className = "nav-item" + (APP.view === item.id ? " active" : "") + (isLocked ? " locked" : "");
-    el.title = isLocked ? `${item.label} terkunci untuk paket Trial` : item.label;
+    el.title = isLocked ? `${item.label} terkunci untuk package Anda saat ini` : item.label;
     el.innerHTML = `<span class="nav-icon">${icon(NAV_ICON_MAP[item.id] || item.icon)}</span><span class="nav-text">${item.label}</span>${isLocked ? `<span class="nav-lock">${icon("lock")}</span>` : ""}`;
     el.addEventListener("click", () => onNavClick(item.id));
     nav.appendChild(el);
@@ -255,14 +283,18 @@ function buildNav() {
 function onNavClick(id) {
   const locked = new Set(((APP.state && APP.state.subscription) || {}).locked_features || []);
   if (locked.has(id)) {
+    const sub = (APP.state && APP.state.subscription) || {};
     showUpgradeModal({
-      error: id === "doc_lain_masukan"
-        ? "Doc Lain Masukan terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini."
-        : "SPT Dokumen Lain terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini.",
+      error: sub.status === "expired"
+        ? "Masa berlangganan sudah habis. Perpanjang package untuk membuka kembali seluruh menu."
+        : id === "doc_lain_masukan"
+          ? "Doc Lain Masukan terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini."
+          : "SPT Dokumen Lain terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini.",
       upgrade_required: true,
-      feature_locked: true,
-      limit: ((APP.state && APP.state.subscription) || {}).limit || 10,
-      pricing_url: "/auth?plan=professional",
+      feature_locked: sub.status !== "expired",
+      subscription_expired: sub.status === "expired",
+      limit: sub.limit || 10,
+      pricing_url: sub.status === "expired" ? "/#pricing" : "/auth?plan=professional",
     });
     return;
   }
@@ -275,6 +307,13 @@ function statPill(label, value) {
 }
 function trialStatPill(used) {
   const sub = (APP.state && APP.state.subscription) || { limit: 10 };
+  if (sub.status === "active") {
+    const limit = sub.limit ? `${used}/${sub.limit}` : "Unlimited";
+    return `<button class="stat-pill trial-pill" id="trialUpgradePill" title="Kelola package"><div class="stat-value">${limit}</div><div class="stat-label">${escapeHtml(sub.plan || "Active")}</div></button>`;
+  }
+  if (sub.status === "expired") {
+    return `<button class="stat-pill trial-pill expired" id="trialUpgradePill" title="Perpanjang package"><div class="stat-value">Expired</div><div class="stat-label">Subscription</div></button>`;
+  }
   const limit = sub.limit || 10;
   return `<button class="stat-pill trial-pill" id="trialUpgradePill" title="Lihat pricing package"><div class="stat-value">${used}/${limit}</div><div class="stat-label">Trial Invoice</div></button>`;
 }
@@ -665,8 +704,22 @@ function renderDataTable(target, options) {
 
 /* ==================== CENTRAL STATE / RENDER ==================== */
 function applyState(newState) {
+  if (newState) newState.subscription = mergedSubscription(newState.subscription);
   APP.state = newState;
   render();
+}
+function renderSubscriptionExpired(body) {
+  body.innerHTML = `
+    <section class="subscription-lock">
+      <div class="upgrade-badge">Subscription expired</div>
+      <h1>Masa berlangganan sudah habis</h1>
+      <p>Semua menu aplikasi dikunci sementara. Perpanjang package untuk membuka kembali akses workspace dan melanjutkan proses dokumen.</p>
+      <div class="subscription-lock-actions">
+        <a class="btn primary" href="/#pricing">Perpanjang package</a>
+        <a class="btn secondary" href="/auth?plan=professional">Login ulang</a>
+      </div>
+    </section>
+  `;
 }
 function render() {
   buildNav();
@@ -675,6 +728,10 @@ function render() {
   refreshExportSection();
   const body = document.getElementById("body");
   body.innerHTML = "";
+  if (isSubscriptionExpired()) {
+    renderSubscriptionExpired(body);
+    return;
+  }
   if (APP.view === "dashboard") {
     renderDashboardView(body);
   } else if (APP.view === "pajak_keluaran") {
@@ -745,13 +802,83 @@ function renderDocLainMasukanView(body) {
 }
 
 /* ==================== VIEW: DASHBOARD ==================== */
+function monthKeyFromDateText(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  let match = text.match(/^(\d{4})-(\d{2})-\d{2}/);
+  if (match) return `${match[1]}-${match[2]}`;
+  match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) return `${match[3]}-${String(match[2]).padStart(2, "0")}`;
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`;
+  return "";
+}
+function daysUntil(value) {
+  if (!value) return null;
+  const end = new Date(value);
+  if (Number.isNaN(end.getTime())) return null;
+  return Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000));
+}
+function formatDateId(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
+function dashboardMetric(iconName, label, value, note = "") {
+  return `
+    <div class="dash-card">
+      <div class="dash-card-head">${icon(iconName)}<span>${escapeHtml(label)}</span></div>
+      <div class="dash-card-value">${escapeHtml(value)}</div>
+      ${note ? `<div class="dash-card-label">${escapeHtml(note)}</div>` : ""}
+    </div>
+  `;
+}
+function dashboardInsights(data) {
+  const st = APP.state || {};
+  const sub = st.subscription || {};
+  const authSub = ((APP.auth || {}).subscription || {});
+  const items = data.items || [];
+  const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const invoicesThisMonth = items.filter((it) => monthKeyFromDateText(it.tgl_faktur || it.exported_at) === currentMonth).length;
+  const remainingDays = daysUntil(sub.expiresAt || authSub.expiresAt);
+  const planName = sub.plan || authSub.plan || "Trial";
+  const status = sub.status || authSub.status || "trial";
+  const processedInvoices = (st.faktur_rows || []).length;
+  const dlmDocs = ((st.dlm || {}).processed || []).length;
+  const sdlDocs = ((st.sdl || {}).processed || []).length;
+  const limit = sub.limit || 10;
+  const quotaLabel = status === "active" && !limit ? "Unlimited" : `${processedInvoices}/${limit}`;
+  return {
+    planName,
+    status,
+    invoicesThisMonth,
+    processedInvoices,
+    dlmDocs,
+    sdlDocs,
+    quotaLabel,
+    remainingDays,
+    expiresAt: sub.expiresAt || authSub.expiresAt,
+    exportedTotal: data.total || 0,
+  };
+}
 function renderDashboardData(wrap, data) {
   const items = data.items || [];
+  const insights = dashboardInsights(data);
+  const remainingLabel = insights.status === "active"
+    ? `${insights.remainingDays ?? "-"} hari`
+    : insights.status === "expired" ? "Expired" : "Trial";
+  const expiryNote = insights.status === "active"
+    ? `Aktif sampai ${formatDateId(insights.expiresAt)}`
+    : insights.status === "expired" ? "Perpanjang package untuk membuka akses" : "Upgrade untuk membuka semua menu";
   wrap.querySelector("#dashCards").innerHTML = `
-    <div class="dash-card">
-      <div class="dash-card-value">${data.total || 0}</div>
-      <div class="dash-card-label">No. Faktur sudah di-export ke XML Coretax</div>
-    </div>
+    ${dashboardMetric("package", "Paket Langganan", insights.planName, insights.status)}
+    ${dashboardMetric("calendar", "Sisa Waktu", remainingLabel, expiryNote)}
+    ${dashboardMetric("receipt", "Invoice Bulan Ini", String(insights.invoicesThisMonth), "Berdasarkan tanggal faktur/export")}
+    ${dashboardMetric("fileSpreadsheet", "Invoice Diproses", insights.quotaLabel, "Data aktif di workspace")}
+    ${dashboardMetric("fileDown", "Doc Lain Masukan", String(insights.dlmDocs), "Dokumen yang sudah diproses")}
+    ${dashboardMetric("bookOpen", "SPT Dokumen Lain", String(insights.sdlDocs), "Dokumen manual tersimpan di sesi")}
+    ${dashboardMetric("archive", "Total Export XML", String(insights.exportedTotal), "Riwayat No. Faktur Coretax")}
   `;
   const tableEl = wrap.querySelector("#dashTableScroll");
   if (!items.length) {
@@ -3090,8 +3217,10 @@ function wireGlobalEvents() {
 async function init() {
   await loadTanStack();
   const data = await apiGet("/api/bootstrap");
+  await loadAuthSession();
   APP.bootstrap = data;
   APP.state = data.state;
+  APP.state.subscription = mergedSubscription(APP.state.subscription);
   applyTheme(data.theme);
   buildThemeSelect();
   setSidebarCollapsed(localStorage.getItem("sidebarCollapsed") === "1");

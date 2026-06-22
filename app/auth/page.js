@@ -28,11 +28,41 @@ function AuthContent() {
   const plan = PLAN_COPY[planKey] || PLAN_COPY.starter;
   const [mode, setMode] = useState("register");
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const title = useMemo(() => mode === "login" ? "Login untuk melanjutkan" : "Buat akun untuk membeli package", [mode]);
 
-  function submitAuth(event) {
+  async function submitAuth(event) {
     event.preventDefault();
-    setMessage(`Akun berhasil diproses untuk paket ${plan.name}. Lanjutkan ke pembayaran.`);
+    setIsLoading(true);
+    setMessage("");
+
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      plan: planKey,
+      email: form.get("email"),
+      password: form.get("password"),
+      name: form.get("name"),
+      company: form.get("company"),
+    };
+
+    try {
+      const response = await fetch(`/api/auth/${mode === "login" ? "login" : "register"}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Proses akun gagal.");
+      }
+
+      setMessage(`${mode === "login" ? "Login" : "Akun"} berhasil. Mengarahkan ke pembayaran paket ${plan.name}...`);
+      window.location.href = `/checkout?plan=${encodeURIComponent(planKey)}`;
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -86,13 +116,15 @@ function AuthContent() {
               Password
               <input required type="password" name="password" placeholder="Minimal 8 karakter" minLength={8} />
             </label>
-            <button type="submit">{mode === "login" ? "Login & lanjut bayar" : "Buat akun & lanjut bayar"}</button>
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? "Memproses..." : mode === "login" ? "Login & lanjut bayar" : "Buat akun & lanjut bayar"}
+            </button>
           </form>
 
           {message ? (
             <div className="auth-message">
               <span>{message}</span>
-              <a href="/app">Masuk ke app sementara</a>
+              {message.includes("berhasil") ? <a href={`/checkout?plan=${encodeURIComponent(planKey)}`}>Lanjut bayar sekarang</a> : null}
             </div>
           ) : null}
         </section>
