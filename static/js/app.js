@@ -17,6 +17,10 @@ const APP = {
   pendingDlmField: null,
   selDlm: new Set(),
   selSdl: new Set(),
+  tableStates: {},
+  tableCore: null,
+  queryCore: null,
+  queryClient: null,
 };
 
 class ApiError extends Error {
@@ -45,6 +49,29 @@ async function apiDelete(url) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(data.error || "Terjadi kesalahan.", data);
   return data;
+}
+async function loadTanStack() {
+  try {
+    const [tableCore, queryCore] = await Promise.all([
+      import("/static/vendor/tanstack-table/index.esm.js"),
+      import("/static/vendor/tanstack-query/index.js"),
+    ]);
+    APP.tableCore = tableCore;
+    APP.queryCore = queryCore;
+    APP.queryClient = new queryCore.QueryClient({
+      defaultOptions: { queries: { staleTime: 15000, gcTime: 5 * 60 * 1000 } },
+    });
+  } catch (err) {
+    console.warn("TanStack core failed to load, using local table/query fallback.", err);
+    APP.queryClient = null;
+  }
+}
+async function queryGet(queryKey, url) {
+  if (!APP.queryClient) return apiGet(url);
+  return APP.queryClient.fetchQuery({ queryKey, queryFn: () => apiGet(url) });
+}
+function invalidateQueries(queryKey) {
+  if (APP.queryClient) APP.queryClient.invalidateQueries({ queryKey });
 }
 
 /* ==================== FORMAT HELPERS ==================== */
@@ -81,6 +108,45 @@ function fmtPct(val) {
   let s = n.toFixed(2);
   s = s.replace(/0+$/, "").replace(/\.$/, "");
   return s;
+}
+
+/* ==================== ICONS ==================== */
+const ICONS = {
+  activity: '<path d="M22 12h-4l-3 7-6-14-3 7H2"/>',
+  archive: '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
+  arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  bookOpen: '<path d="M12 7v14"/><path d="M3 5a7 7 0 0 1 9 2 7 7 0 0 1 9-2v16a7 7 0 0 0-9 2 7 7 0 0 0-9-2z"/>',
+  boxes: '<path d="m7.5 4.3 4.5 2.6 4.5-2.6"/><path d="M12 6.9v5.2"/><path d="m3 8 4.5 2.6L12 8l4.5 2.6L21 8"/><path d="M3 8v8l4.5 2.6L12 16l4.5 2.6L21 16V8"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/>',
+  check: '<path d="m20 6-11 11-5-5"/>',
+  chevronsLeft: '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
+  chevronLeft: '<path d="m15 18-6-6 6-6"/>',
+  chevronRight: '<path d="m9 18 6-6-6-6"/>',
+  chevronsRight: '<path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+  fileDown: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/>',
+  fileSpreadsheet: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M10 9v10"/><path d="M14 9v10"/>',
+  folderOpen: '<path d="M6 14 4.6 20A2 2 0 0 0 6.5 22h11a2 2 0 0 0 1.9-1.5L21 12H7.5A2 2 0 0 0 6 14z"/><path d="M3 18V6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v3"/>',
+  hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
+  layoutDashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+  package: '<path d="m16.5 9.4-9-5.2"/><path d="m21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  panelLeft: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+  play: '<path d="m8 5 11 7-11 7z"/>',
+  receipt: '<path d="M4 2v20l3-2 3 2 3-2 3 2 4-2V2l-4 2-3-2-3 2-3-2z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/>',
+  refresh: '<path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><path d="M3 21v-5h5"/><path d="M3 12A9 9 0 0 1 18.3 5.6L21 8"/><path d="M21 3v5h-5"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  settings: '<path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  tag: '<path d="M12.6 2.6H21v8.4L10.4 21.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8z"/><circle cx="17" cy="7" r="1"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8 12 3 7 8"/><path d="M12 3v12"/>',
+  user: '<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>',
+};
+function icon(name, cls = "") {
+  const body = ICONS[name] || ICONS.activity;
+  return `<svg class="ui-icon ${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
 /* ==================== THEME ==================== */
@@ -138,12 +204,12 @@ function toast(msg, kind = "info") {
 
 /* ==================== NAV / TOPBAR ==================== */
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard", icon: "\u{1F4C8}" },
-  { id: "pajak_keluaran", label: "Pajak Keluaran", icon: "\u{1F4B0}" },
-  { id: "doc_lain_masukan", label: "Doc Lain Masukan", icon: "\u{1F4E5}" },
-  { id: "spt_dokumen_lain", label: "SPT Dokumen Lain", icon: "\u{1F4D1}" },
+  { id: "dashboard", label: "Dashboard", icon: "layoutDashboard" },
+  { id: "pajak_keluaran", label: "Pajak Keluaran", icon: "receipt" },
+  { id: "doc_lain_masukan", label: "Doc Lain Masukan", icon: "fileDown" },
+  { id: "spt_dokumen_lain", label: "SPT Dokumen Lain", icon: "bookOpen" },
   { divider: true },
-  { id: "database", label: "Database", icon: "\u{1F5C4}️" },
+  { id: "database", label: "Database", icon: "database" },
 ];
 const PK_SUBTABS = [
   { id: "upload_mapping", label: "Upload & Mapping" },
@@ -154,6 +220,13 @@ const DLM_SUBTABS = [
   { id: "upload_mapping", label: "Upload & Mapping" },
   { id: "tabel", label: "Tabel Data" },
 ];
+const NAV_ICON_MAP = {
+  dashboard: "layoutDashboard",
+  pajak_keluaran: "receipt",
+  doc_lain_masukan: "fileDown",
+  spt_dokumen_lain: "bookOpen",
+  database: "database",
+};
 function buildNav() {
   const nav = document.getElementById("nav");
   nav.innerHTML = "";
@@ -167,7 +240,7 @@ function buildNav() {
     const el = document.createElement("div");
     el.className = "nav-item" + (APP.view === item.id ? " active" : "");
     el.title = item.label;
-    el.innerHTML = `<span class="nav-icon">${item.icon}</span><span class="nav-text">${item.label}</span>`;
+    el.innerHTML = `<span class="nav-icon">${icon(NAV_ICON_MAP[item.id] || item.icon)}</span><span class="nav-text">${item.label}</span>`;
     el.addEventListener("click", () => onNavClick(item.id));
     nav.appendChild(el);
   });
@@ -192,9 +265,9 @@ function refreshTopbar() {
 
     let status;
     if (!totalDoc) {
-      status = "%&nbsp; Siap &mdash; isi nominal PPN (VAT) untuk menambah dokumen";
+      status = `${icon("activity", "status-icon")} Siap &mdash; isi nominal PPN (VAT) untuk menambah dokumen`;
     } else {
-      status = `%&nbsp; ${totalDoc} dokumen siap export`;
+      status = `${icon("check", "status-icon")} ${totalDoc} dokumen siap export`;
       if (sdl.tax_period_month) status += ` &mdash; Masa ${String(sdl.tax_period_month).padStart(2, "0")}/${sdl.tax_period_year}`;
     }
     document.getElementById("statusLabel").innerHTML = status;
@@ -210,11 +283,11 @@ function refreshTopbar() {
 
     let status;
     if (!dlm.raw_headers.length) {
-      status = "%&nbsp; Siap &mdash; upload file Doc Lain Masukan untuk memulai";
+      status = `${icon("upload", "status-icon")} Siap &mdash; upload file Doc Lain Masukan untuk memulai`;
     } else if (!dlm.processed.length) {
-      status = `%&nbsp; File dimuat: ${dlm.raw_row_count} baris &mdash; lengkapi mapping lalu proses`;
+      status = `${icon("settings", "status-icon")} File dimuat: ${dlm.raw_row_count} baris &mdash; lengkapi mapping lalu proses`;
     } else {
-      status = `%&nbsp; Diproses: ${totalDoc} dokumen`;
+      status = `${icon("check", "status-icon")} Diproses: ${totalDoc} dokumen`;
     }
     document.getElementById("statusLabel").innerHTML = status;
     return;
@@ -232,9 +305,9 @@ function refreshTopbar() {
   if (!st.raw_headers.length) {
     status = "";
   } else if (!st.processed.length) {
-    status = `%&nbsp; File dimuat: ${st.raw_row_count} baris &mdash; lengkapi mapping lalu proses`;
+    status = `${icon("settings", "status-icon")} File dimuat: ${st.raw_row_count} baris &mdash; lengkapi mapping lalu proses`;
   } else {
-    status = `%&nbsp; Diproses: ${totalBaris} baris, ${fakturUnik} faktur unik`;
+    status = `${icon("check", "status-icon")} Diproses: ${totalBaris} baris, ${fakturUnik} faktur unik`;
     if (duplikat) status += `, ${duplikat} faktur duplikat`;
   }
   document.getElementById("statusLabel").innerHTML = status;
@@ -252,25 +325,25 @@ function refreshExportSection() {
   const el = document.getElementById("exportSection");
   if (APP.view === "spt_dokumen_lain") {
     el.innerHTML = `
-      <label class="side-label"><img class="logo-sm" src="/static/img/logo.svg" alt="">&nbsp; EXPORT SPT LAIN</label>
-      <button class="pill pill-teal pill-block" id="btnExportSdlXml">%&nbsp; XML Coretax</button>
+      <label class="side-label">${icon("fileDown")} EXPORT SPT LAIN</label>
+      <button class="pill pill-teal pill-block" id="btnExportSdlXml">${icon("fileDown")} XML Coretax</button>
     `;
     el.querySelector("#btnExportSdlXml").addEventListener("click", exportSdlXml);
     return;
   }
   if (APP.view === "doc_lain_masukan") {
     el.innerHTML = `
-      <label class="side-label"><img class="logo-sm" src="/static/img/logo.svg" alt="">&nbsp; EXPORT DOC LAIN</label>
-      <button class="pill pill-success pill-block" id="btnExportDlmXlsx"><img class="logo-sm" src="/static/img/logo.svg" alt="">&nbsp; XLSX</button>
-      <button class="pill pill-teal pill-block" id="btnExportDlmXml">%&nbsp; XML Coretax</button>
+      <label class="side-label">${icon("fileDown")} EXPORT DOC LAIN</label>
+      <button class="pill pill-success pill-block" id="btnExportDlmXlsx">${icon("fileSpreadsheet")} XLSX</button>
+      <button class="pill pill-teal pill-block" id="btnExportDlmXml">${icon("fileDown")} XML Coretax</button>
     `;
     el.querySelector("#btnExportDlmXlsx").addEventListener("click", exportDlmXlsx);
     el.querySelector("#btnExportDlmXml").addEventListener("click", exportDlmXml);
   } else {
     el.innerHTML = `
-      <label class="side-label"><img class="logo-sm" src="/static/img/logo.svg" alt="">&nbsp; EXPORT PAJAK</label>
-      <button class="pill pill-success pill-block" id="btnExportXlsx"><img class="logo-sm" src="/static/img/logo.svg" alt="">&nbsp; XLSX</button>
-      <button class="pill pill-teal pill-block" id="btnExportXml">%&nbsp; XML Coretax</button>
+      <label class="side-label">${icon("fileDown")} EXPORT PAJAK</label>
+      <button class="pill pill-success pill-block" id="btnExportXlsx">${icon("fileSpreadsheet")} XLSX</button>
+      <button class="pill pill-teal pill-block" id="btnExportXml">${icon("fileDown")} XML Coretax</button>
     `;
     el.querySelector("#btnExportXlsx").addEventListener("click", exportXlsx);
     el.querySelector("#btnExportXml").addEventListener("click", exportXml);
@@ -289,7 +362,7 @@ function openModal({ title, subtitle, bodyHtml, footerHtml, width, onMount, clos
   modal.innerHTML = `
     <div class="modal-header">
       <div><div class="title">${title}</div>${subtitle ? `<div class="sub">${subtitle}</div>` : ""}</div>
-      <button class="pill pill-ghost pill-sm" id="modalCloseBtn">&#10005;</button>
+      <button class="pill pill-ghost pill-sm icon-btn" id="modalCloseBtn" aria-label="Tutup">${icon("close")}</button>
     </div>
     <div class="modal-body">${bodyHtml}</div>
     ${footerHtml ? `<div class="modal-footer">${footerHtml}</div>` : ""}
@@ -318,7 +391,7 @@ function showContextMenu(x, y, title, items) {
   if (title) html += `<div class="ctx-title">${escapeHtml(title)}</div>`;
   items.forEach((it) => {
     if (it.sep) { html += `<div class="ctx-sep"></div>`; return; }
-    html += `<div class="ctx-item${it.active ? " active" : ""}${it.danger ? " danger" : ""}">${it.active ? "&#10003; " : ""}${escapeHtml(it.label)}</div>`;
+    html += `<div class="ctx-item${it.active ? " active" : ""}${it.danger ? " danger" : ""}">${it.active ? icon("check") : ""}${escapeHtml(it.label)}</div>`;
   });
   menu.innerHTML = html;
   document.getElementById("ctx-menu-root").appendChild(menu);
@@ -356,6 +429,171 @@ function colgroupHtml(cols) {
 }
 function emptyHint(msg) {
   return `<div class="empty-hint">${escapeHtml(msg)}</div>`;
+}
+function getTableState(id, pageSize = 25) {
+  if (!APP.tableStates[id]) {
+    APP.tableStates[id] = {
+      sorting: [],
+      globalFilter: "",
+      pagination: { pageIndex: 0, pageSize },
+    };
+  }
+  return APP.tableStates[id];
+}
+function setTablePage(id, pageIndex) {
+  const st = getTableState(id);
+  st.pagination.pageIndex = Math.max(0, pageIndex);
+}
+function tableCellValue(row, col) {
+  if (typeof col.cell === "function") return col.cell(row);
+  if (typeof col.accessor === "function") return col.accessor(row);
+  return row[col.accessor || col.id];
+}
+function tanColumn(col) {
+  return {
+    id: col.id,
+    header: col.header,
+    accessorFn: (row) => {
+      if (typeof col.sortAccessor === "function") return col.sortAccessor(row);
+      return tableCellValue(row, col);
+    },
+    enableSorting: col.sortable !== false,
+    meta: col,
+  };
+}
+function normalizePageState(state, totalPages) {
+  const maxPage = Math.max(0, totalPages - 1);
+  if (state.pagination.pageIndex > maxPage) state.pagination.pageIndex = maxPage;
+}
+function renderCellContent(value, html) {
+  if (html) return String(value ?? "");
+  return escapeHtml(value ?? "");
+}
+function renderDataTable(target, options) {
+  const {
+    id, columns, rows, empty = "Belum ada data.", pageSize = 25,
+    searchPlaceholder = "Cari data...", getRowClass, onRowClick, onRowDblClick,
+  } = options;
+  const state = getTableState(id, pageSize);
+  const data = rows || [];
+  const core = APP.tableCore;
+  const tanColumns = columns.map(tanColumn);
+  let table = null;
+  let pageRows = [];
+  let totalRows = data.length;
+  let filteredRows = data;
+
+  if (core) {
+    table = core.createTable({
+      data,
+      columns: tanColumns,
+      state,
+      globalFilterFn: "includesString",
+      onSortingChange: (updater) => { state.sorting = core.functionalUpdate(updater, state.sorting); },
+      onGlobalFilterChange: (updater) => { state.globalFilter = core.functionalUpdate(updater, state.globalFilter); state.pagination.pageIndex = 0; },
+      onPaginationChange: (updater) => { state.pagination = core.functionalUpdate(updater, state.pagination); },
+      getCoreRowModel: core.getCoreRowModel(),
+      getFilteredRowModel: core.getFilteredRowModel(),
+      getSortedRowModel: core.getSortedRowModel(),
+      getPaginationRowModel: core.getPaginationRowModel(),
+    });
+    totalRows = table.getFilteredRowModel().rows.length;
+    normalizePageState(state, table.getPageCount());
+    pageRows = table.getPaginationRowModel().rows;
+  } else {
+    const q = state.globalFilter.trim().toLowerCase();
+    filteredRows = q ? data.filter((row) => columns.some((col) => String(tableCellValue(row, col) ?? "").toLowerCase().includes(q))) : data.slice();
+    const sort = state.sorting[0];
+    if (sort) {
+      const col = columns.find((c) => c.id === sort.id);
+      filteredRows.sort((a, b) => String(tableCellValue(a, col) ?? "").localeCompare(String(tableCellValue(b, col) ?? ""), undefined, { numeric: true, sensitivity: "base" }));
+      if (sort.desc) filteredRows.reverse();
+    }
+    totalRows = filteredRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / state.pagination.pageSize));
+    normalizePageState(state, totalPages);
+    pageRows = filteredRows.slice(
+      state.pagination.pageIndex * state.pagination.pageSize,
+      (state.pagination.pageIndex + 1) * state.pagination.pageSize,
+    ).map((original, index) => ({ original, index, getVisibleCells: () => columns.map((col) => ({ column: { columnDef: { meta: col } }, getValue: () => tableCellValue(original, col) })) }));
+  }
+
+  const pageCount = table ? table.getPageCount() : Math.max(1, Math.ceil(totalRows / state.pagination.pageSize));
+  const start = totalRows ? state.pagination.pageIndex * state.pagination.pageSize + 1 : 0;
+  const end = Math.min(totalRows, (state.pagination.pageIndex + 1) * state.pagination.pageSize);
+  const headerHtml = columns.map((col) => {
+    const sort = state.sorting[0];
+    const active = sort && sort.id === col.id;
+    const marker = active ? (sort.desc ? " v" : " ^") : "";
+    return `<th class="${thAlignClass(col.align)}${col.sortable === false ? "" : " sortable"}" data-col="${escapeHtml(col.id)}" title="${escapeHtml(col.header)}">${escapeHtml(col.header)}${marker}</th>`;
+  }).join("");
+  const colgroup = "<colgroup>" + columns.map((col) => `<col style="width:${col.width || 140}px">`).join("") + "</colgroup>";
+  const bodyHtml = pageRows.map((row, i) => {
+    const original = row.original;
+    const rowClass = getRowClass ? getRowClass(original, original.__idx ?? row.index, i) : (i % 2 === 0 ? "row-a" : "row-b");
+    const cells = row.getVisibleCells().map((cell) => {
+      const col = cell.column.columnDef.meta;
+      return `<td class="${tdAlignClass(col.align)}">${renderCellContent(tableCellValue(original, col), col.html)}</td>`;
+    }).join("");
+    return `<tr class="${rowClass}" data-idx="${escapeHtml(original.__idx ?? row.index)}">${cells}</tr>`;
+  }).join("");
+
+  target.innerHTML = `
+    <div class="table-shell">
+      <div class="table-toolbar">
+        <div class="table-search"><span>${icon("search")}</span><input class="x-input table-filter" value="${escapeHtml(state.globalFilter)}" placeholder="${escapeHtml(searchPlaceholder)}"></div>
+        <div class="table-meta">${start}-${end} dari ${totalRows}</div>
+      </div>
+      <div class="table-scroll">
+        ${totalRows ? `<table class="dtable">${colgroup}<thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>` : emptyHint(empty)}
+      </div>
+      <div class="table-pager">
+        <button class="pill pill-ghost pill-sm icon-btn" data-page="first" aria-label="Halaman pertama">${icon("chevronsLeft")}</button>
+        <button class="pill pill-ghost pill-sm icon-btn" data-page="prev" aria-label="Halaman sebelumnya">${icon("chevronLeft")}</button>
+        <span>Halaman ${Math.min(state.pagination.pageIndex + 1, pageCount || 1)} / ${pageCount || 1}</span>
+        <button class="pill pill-ghost pill-sm icon-btn" data-page="next" aria-label="Halaman berikutnya">${icon("chevronRight")}</button>
+        <button class="pill pill-ghost pill-sm icon-btn" data-page="last" aria-label="Halaman terakhir">${icon("chevronsRight")}</button>
+        <select class="x-select table-page-size">
+          ${[10, 25, 50, 100].map((n) => `<option value="${n}"${state.pagination.pageSize === n ? " selected" : ""}>${n} / halaman</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  `;
+  const filter = target.querySelector(".table-filter");
+  filter.addEventListener("input", () => {
+    state.globalFilter = filter.value;
+    state.pagination.pageIndex = 0;
+    renderDataTable(target, options);
+  });
+  target.querySelectorAll("th.sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const colId = th.dataset.col;
+      const current = state.sorting[0];
+      state.sorting = current && current.id === colId ? [{ id: colId, desc: !current.desc }] : [{ id: colId, desc: false }];
+      renderDataTable(target, options);
+    });
+  });
+  target.querySelector(".table-page-size").addEventListener("change", (e) => {
+    state.pagination.pageSize = Number(e.target.value);
+    state.pagination.pageIndex = 0;
+    renderDataTable(target, options);
+  });
+  target.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.page;
+      if (action === "first") setTablePage(id, 0);
+      if (action === "prev") setTablePage(id, state.pagination.pageIndex - 1);
+      if (action === "next") setTablePage(id, state.pagination.pageIndex + 1);
+      if (action === "last") setTablePage(id, pageCount - 1);
+      renderDataTable(target, options);
+    });
+  });
+  target.querySelectorAll("tbody tr").forEach((tr) => {
+    const idx = parseInt(tr.dataset.idx, 10);
+    const original = data.find((r) => Number(r.__idx) === idx) || data[idx];
+    if (onRowClick) tr.addEventListener("click", (e) => onRowClick(original, idx, e));
+    if (onRowDblClick) tr.addEventListener("dblclick", (e) => onRowDblClick(original, idx, e));
+  });
 }
 
 /* ==================== CENTRAL STATE / RENDER ==================== */
@@ -453,31 +691,26 @@ function renderDashboardData(wrap, data) {
     tableEl.innerHTML = emptyHint("Belum ada faktur yang di-export ke XML Coretax.");
     return;
   }
-  let html = '<table class="dtable">' + colgroupHtml([
-    ["No", 50], ["No. Faktur", 160], ["Tgl Faktur", 100],
-    ["Nama Pembeli", 220], ["File Sumber", 220], ["Waktu Export", 150],
-  ]) + "<thead><tr>";
-  html += '<th>No</th><th class="col-left">No. Faktur</th><th>Tgl Faktur</th>';
-  html += '<th class="col-left">Nama Pembeli</th><th class="col-left">File Sumber</th><th>Waktu Export</th>';
-  html += "</tr></thead><tbody>";
-  items.forEach((it, i) => {
-    html += `<tr class="${i % 2 === 0 ? "row-a" : "row-b"}">`;
-    html += tdCell(i + 1, "center");
-    html += tdCell(it.no_faktur, "left");
-    html += tdCell(it.tgl_faktur, "center");
-    html += tdCell(it.nama_pembeli, "left");
-    html += tdCell(it.source_file, "left");
-    html += tdCell(it.exported_at, "center");
-    html += "</tr>";
+  renderDataTable(tableEl, {
+    id: "dashboard",
+    rows: items.map((it, i) => ({ ...it, no: i + 1, __idx: i })),
+    pageSize: 25,
+    searchPlaceholder: "Cari faktur, pembeli, atau file...",
+    columns: [
+      { id: "no", header: "No", accessor: "no", width: 54, align: "center" },
+      { id: "no_faktur", header: "No. Faktur", accessor: "no_faktur", width: 170, align: "left" },
+      { id: "tgl_faktur", header: "Tgl Faktur", accessor: "tgl_faktur", width: 120, align: "center" },
+      { id: "nama_pembeli", header: "Nama Pembeli", accessor: "nama_pembeli", width: 240, align: "left" },
+      { id: "source_file", header: "File Sumber", accessor: "source_file", width: 240, align: "left" },
+      { id: "exported_at", header: "Waktu Export", accessor: "exported_at", width: 170, align: "center" },
+    ],
   });
-  html += "</tbody></table>";
-  tableEl.innerHTML = html;
 }
 async function loadDashboardData(wrap) {
   wrap.querySelector("#dashCards").innerHTML = emptyHint("Memuat...");
   wrap.querySelector("#dashTableScroll").innerHTML = "";
   try {
-    const data = await apiGet("/api/dashboard");
+    const data = await queryGet(["dashboard"], "/api/dashboard");
     renderDashboardData(wrap, data);
   } catch (err) {
     wrap.querySelector("#dashCards").innerHTML = "";
@@ -492,8 +725,8 @@ function renderDashboardView(body) {
       <span class="tt">Dashboard</span>
       <span class="spacer"></span>
       <div class="btn-row">
-        <button class="pill pill-ghost pill-sm" id="btnRefreshDashboard">&#8635; Refresh</button>
-        <button class="pill pill-danger pill-sm" id="btnClearHistory">Hapus Riwayat</button>
+        <button class="pill pill-ghost pill-sm" id="btnRefreshDashboard">${icon("refresh")} Refresh</button>
+        <button class="pill pill-danger pill-sm" id="btnClearHistory">${icon("trash")} Hapus Riwayat</button>
       </div>
     </div>
     <div class="dash-cards" id="dashCards"></div>
@@ -505,6 +738,7 @@ function renderDashboardView(body) {
   wrap.querySelector("#btnClearHistory").addEventListener("click", async () => {
     try {
       const data = await apiPost("/api/dashboard/reset");
+      invalidateQueries(["dashboard"]);
       renderDashboardData(wrap, data);
       toast("Riwayat export dihapus.", "info");
     } catch (err) { toast(err.message, "error"); }
@@ -520,13 +754,13 @@ function renderUploadView(body) {
   wrap.className = "view-upload";
   wrap.innerHTML = `
     <div class="upload-card">
-      <div class="upload-icon"><img src="/static/img/logo.svg" alt="Logo"></div>
+      <div class="upload-icon">${icon("upload")}</div>
       <h1>Pajak Keluaran Otomatis</h1>
       <p>Upload file Excel (.xls / .xlsx) hasil ekspor data penjualan untuk memulai.</p>
       <div class="hr"></div>
       <div class="btn-row">
-        <button class="pill pill-primary" id="btnPickFile">&#128193; Pilih File Excel</button>
-        <button class="pill pill-ghost" id="btnPickTemplate">&#128209; Load Template</button>
+        <button class="pill pill-primary" id="btnPickFile">${icon("upload")} Pilih File Excel</button>
+        <button class="pill pill-ghost" id="btnPickTemplate">${icon("folderOpen")} Load Template</button>
       </div>
       <div class="hr"></div>
       <div class="upload-info">
@@ -546,12 +780,12 @@ function renderDlmUploadView(body) {
   wrap.className = "view-upload";
   wrap.innerHTML = `
     <div class="upload-card">
-      <div class="upload-icon">\u{1F4E5}</div>
+      <div class="upload-icon">${icon("fileDown")}</div>
       <h1>Doc Lain Masukan</h1>
       <p>Upload file Excel (.xls / .xlsx) daftar faktur pembelian (mis. dari TikTok PTE LTD selaku Pemungut PPN PMSE) untuk memulai.</p>
       <div class="hr"></div>
       <div class="btn-row">
-        <button class="pill pill-primary" id="btnDlmPickFile">&#128193; Pilih File Excel</button>
+        <button class="pill pill-primary" id="btnDlmPickFile">${icon("upload")} Pilih File Excel</button>
       </div>
     </div>`;
   body.appendChild(wrap);
@@ -609,40 +843,34 @@ function renderSdlTable() {
     return;
   }
   const cols = APP.bootstrap.sdl_out_cols;
-  let html = '<table class="dtable">' + colgroupHtml(cols) + "<thead><tr>";
-  cols.forEach((c) => { html += `<th class="${thAlignClass(c[2])}">${escapeHtml(c[0])}</th>`; });
-  html += "</tr></thead><tbody>";
-  st.processed.forEach((r, i) => {
-    const selected = APP.selSdl.has(i);
-    html += `<tr class="${sdlRowClass(r, i, selected)}" data-idx="${i}">`;
-    html += tdCell(r.no, "center");
-    html += tdCell(r.trx_code, "center");
-    html += tdCell(r.buyer_name, "left");
-    html += tdCell(r.buyer_id_opt, "center");
-    html += tdCell(r.buyer_id_number, "center");
-    html += tdCell(r.good_service_opt, "center");
-    html += tdCell(r.serial_no, "left");
-    html += tdCell(r.doc_date, "center");
-    html += tdCell(fmtIdr(r.tax_base), "right");
-    html += tdCell(fmtIdr(r.other_tax_base), "right");
-    html += tdCell(fmtIdr(r.vat), "right");
-    html += tdCell(fmtIdr(r.stlg), "right");
-    html += tdCell(r.info, "center");
-    html += "</tr>";
-  });
-  html += "</tbody></table>";
-  document.getElementById("sdlTableScroll").innerHTML = html;
-  document.querySelectorAll("#sdlTableScroll tbody tr").forEach((tr) => {
-    const idx = parseInt(tr.dataset.idx, 10);
-    tr.addEventListener("click", (e) => {
+  const keys = ["no", "trx_code", "buyer_name", "buyer_id_opt", "buyer_id_number", "good_service_opt", "serial_no", "doc_date", "tax_base", "other_tax_base", "vat", "stlg", "info"];
+  renderDataTable(document.getElementById("sdlTableScroll"), {
+    id: "sdl",
+    rows: st.processed.map((r, i) => ({ ...r, __idx: i })),
+    pageSize: 25,
+    searchPlaceholder: "Cari pembeli, no seri, atau tanggal...",
+    getRowClass: (r, idx) => sdlRowClass(r, idx, APP.selSdl.has(idx)),
+    onRowClick: (r, idx, e) => {
       if (e.ctrlKey || e.metaKey) {
         if (APP.selSdl.has(idx)) APP.selSdl.delete(idx); else APP.selSdl.add(idx);
       } else {
         APP.selSdl = new Set([idx]);
       }
       renderSdlTable();
-    });
-    tr.addEventListener("dblclick", () => openSdlRowDialog(idx));
+    },
+    onRowDblClick: (r, idx) => openSdlRowDialog(idx),
+    columns: cols.map((c, i) => ({
+      id: keys[i],
+      header: c[0],
+      width: c[1],
+      align: c[2],
+      accessor: (r) => {
+        const v = r[keys[i]];
+        if (["tax_base", "other_tax_base", "vat", "stlg"].includes(keys[i])) return fmtIdr(v);
+        return v;
+      },
+      sortAccessor: (r) => r[keys[i]],
+    })),
   });
 }
 function wireSdlEntryPanel() {
@@ -960,7 +1188,7 @@ async function deleteSdlRow(idx) {
 }
 
 /* ==================== VIEW: MAPPING ==================== */
-const FIELD_ICON_MAP = { person: "\u{1F464}", box: "\u{1F4E6}", hash: "#", calendar: "\u{1F4C5}", tag: "\u{1F3F7}️" };
+const FIELD_ICON_MAP = { person: "user", box: "package", hash: "hash", calendar: "calendar", tag: "tag" };
 function fieldIcon(field) {
   const key = APP.bootstrap.field_icons[field];
   return FIELD_ICON_MAP[key] || "•";
@@ -969,7 +1197,7 @@ function fieldRowHtml(field) {
   const assigned = APP.state.mapping[field] !== undefined;
   const pending = APP.pendingField === field;
   return `<div class="field-row${assigned ? " assigned" : ""}${pending ? " pending" : ""}" data-field="${escapeHtml(field)}">
-    <span class="dot">${assigned ? "&#10003;" : fieldIcon(field)}</span>
+    <span class="dot">${assigned ? icon("check") : fieldIcon(field)}</span>
     <span class="lbl">${escapeHtml(field)}</span>
   </div>`;
 }
@@ -1115,7 +1343,7 @@ function renderMappingView(body) {
   const left = document.createElement("div");
   left.className = "mapping-left";
   left.innerHTML = `
-    <div class="lhdr"><span class="ic">&#9881;</span><span class="tt">Mapping Kolom</span></div>
+    <div class="lhdr"><span class="ic">${icon("settings")}</span><span class="tt">Mapping Kolom</span></div>
     <div class="mapping-fields">
       <div class="hint">Klik salah satu field di bawah, lalu klik kolom yang sesuai pada tabel kanan. Atau klik langsung kolom untuk memilih dari daftar.</div>
       ${APP.bootstrap.tpk_fields.map((f) => fieldRowHtml(f)).join("")}
@@ -1124,10 +1352,10 @@ function renderMappingView(body) {
     <div class="mapping-progress" id="mappingProgress"></div>
     <div class="hr"></div>
     <div style="padding:12px 16px; display:flex; flex-direction:column; gap:6px;">
-      <button class="pill pill-primary pill-block" id="btnProcessData">&#9654; Proses Data</button>
-      <button class="pill pill-ghost pill-block" id="btnResetMapping">&#8635; Reset Mapping</button>
-      <button class="pill pill-ghost pill-block" id="btnLoadTemplate">&#128209; Load Template</button>
-      <button class="pill pill-ghost pill-block" id="btnSaveTemplate">&#128190; Save Template</button>
+      <button class="pill pill-primary pill-block" id="btnProcessData">${icon("play")} Proses Data</button>
+      <button class="pill pill-ghost pill-block" id="btnResetMapping">${icon("refresh")} Reset Mapping</button>
+      <button class="pill pill-ghost pill-block" id="btnLoadTemplate">${icon("folderOpen")} Load Template</button>
+      <button class="pill pill-ghost pill-block" id="btnSaveTemplate">${icon("save")} Save Template</button>
     </div>
   `;
 
@@ -1138,7 +1366,7 @@ function renderMappingView(body) {
       <span class="tt">Pratinjau Data Mentah</span>
       <span>&middot; ${st.raw_row_count} baris &middot; ${escapeHtml(st.src_filename)}</span>
       <span class="spacer" style="flex:1;"></span>
-      <button class="pill pill-ghost pill-sm" id="btnGantiFile">&#128260; Ganti File</button>
+      <button class="pill pill-ghost pill-sm" id="btnGantiFile">${icon("refresh")} Ganti File</button>
     </div>
     <div class="mapping-table-wrap" id="mappingTableScroll"></div>
   `;
@@ -1158,11 +1386,21 @@ function dlmFieldIcon(field) {
   const key = APP.bootstrap.dlm_field_icons[field];
   return FIELD_ICON_MAP[key] || "•";
 }
+fieldIcon = function modernFieldIcon(field) {
+  const key = APP.bootstrap.field_icons[field];
+  const modern = { person: "user", box: "package", hash: "hash", calendar: "calendar", tag: "tag" };
+  return icon(modern[key] || "tag");
+};
+dlmFieldIcon = function modernDlmFieldIcon(field) {
+  const key = APP.bootstrap.dlm_field_icons[field];
+  const modern = { person: "user", box: "package", hash: "hash", calendar: "calendar", tag: "tag" };
+  return icon(modern[key] || "tag");
+};
 function dlmFieldRowHtml(field) {
   const assigned = APP.state.dlm.mapping[field] !== undefined;
   const pending = APP.pendingDlmField === field;
   return `<div class="field-row${assigned ? " assigned" : ""}${pending ? " pending" : ""}" data-field="${escapeHtml(field)}">
-    <span class="dot">${assigned ? "&#10003;" : dlmFieldIcon(field)}</span>
+    <span class="dot">${assigned ? icon("check") : dlmFieldIcon(field)}</span>
     <span class="lbl">${escapeHtml(field)}</span>
   </div>`;
 }
@@ -1308,7 +1546,7 @@ function renderDlmMappingView(body) {
   const left = document.createElement("div");
   left.className = "mapping-left";
   left.innerHTML = `
-    <div class="lhdr"><span class="ic">&#9881;</span><span class="tt">Mapping Kolom</span></div>
+    <div class="lhdr"><span class="ic">${icon("settings")}</span><span class="tt">Mapping Kolom</span></div>
     <div class="mapping-fields">
       <div class="hint">Klik salah satu field di bawah, lalu klik kolom yang sesuai pada tabel kanan. Atau klik langsung kolom untuk memilih dari daftar.</div>
       ${APP.bootstrap.dlm_fields.map((f) => dlmFieldRowHtml(f)).join("")}
@@ -1317,10 +1555,10 @@ function renderDlmMappingView(body) {
     <div class="mapping-progress" id="dlmMappingProgress"></div>
     <div class="hr"></div>
     <div style="padding:12px 16px; display:flex; flex-direction:column; gap:6px;">
-      <button class="pill pill-primary pill-block" id="btnDlmProcessData">&#9654; Proses Data</button>
-      <button class="pill pill-ghost pill-block" id="btnDlmResetMapping">&#8635; Reset Mapping</button>
-      <button class="pill pill-ghost pill-block" id="btnDlmLoadTemplate">&#128209; Load Template</button>
-      <button class="pill pill-ghost pill-block" id="btnDlmSaveTemplate">&#128190; Save Template</button>
+      <button class="pill pill-primary pill-block" id="btnDlmProcessData">${icon("play")} Proses Data</button>
+      <button class="pill pill-ghost pill-block" id="btnDlmResetMapping">${icon("refresh")} Reset Mapping</button>
+      <button class="pill pill-ghost pill-block" id="btnDlmLoadTemplate">${icon("folderOpen")} Load Template</button>
+      <button class="pill pill-ghost pill-block" id="btnDlmSaveTemplate">${icon("save")} Save Template</button>
     </div>
   `;
 
@@ -1331,7 +1569,7 @@ function renderDlmMappingView(body) {
       <span class="tt">Pratinjau Data Mentah</span>
       <span>&middot; ${st.raw_row_count} baris &middot; ${escapeHtml(st.src_filename)}</span>
       <span class="spacer" style="flex:1;"></span>
-      <button class="pill pill-ghost pill-sm" id="btnDlmGantiFile">&#128260; Ganti File</button>
+      <button class="pill pill-ghost pill-sm" id="btnDlmGantiFile">${icon("refresh")} Ganti File</button>
     </div>
     <div class="mapping-table-wrap" id="dlmMappingTableScroll"></div>
   `;
@@ -1371,40 +1609,35 @@ function renderDlmSummary() {
 function renderDlmTable() {
   const st = APP.state.dlm;
   const cols = APP.bootstrap.dlm_out_cols;
-  let html = '<table class="dtable">' + colgroupHtml(cols) + "<thead><tr>";
-  cols.forEach((c) => { html += `<th class="${thAlignClass(c[2])}">${escapeHtml(c[0])}</th>`; });
-  html += "</tr></thead><tbody>";
-  st.processed.forEach((r, i) => {
-    const selected = APP.selDlm.has(i);
-    html += `<tr class="${dlmRowClass(r, i, selected)}" data-idx="${i}">`;
-    html += tdCell(r.no, "center");
-    html += tdCell(r.doc_no, "left");
-    html += tdCell(isoToDdMmYyyy(r.doc_date), "center");
-    html += tdCell(r.trx_type, "center");
-    html += tdCell(r.trx_code, "center");
-    html += tdCell(r.trx_document, "center");
-    html += tdCell(r.tax_period_month, "center");
-    html += tdCell(r.tax_period_year, "center");
-    html += tdCell(fmtIdr(r.tax_base), "right");
-    html += tdCell(fmtIdr(r.vat), "right");
-    html += tdCell(fmtIdr(r.stlg), "right");
-    html += tdCell(r.seller_tin, "center");
-    html += tdCell(r.seller_name, "left");
-    html += "</tr>";
-  });
-  html += "</tbody></table>";
-  document.getElementById("dlmTableScroll").innerHTML = html;
-  document.querySelectorAll("#dlmTableScroll tbody tr").forEach((tr) => {
-    const idx = parseInt(tr.dataset.idx, 10);
-    tr.addEventListener("click", (e) => {
+  const keys = ["no", "doc_no", "doc_date", "trx_type", "trx_code", "trx_document", "tax_period_month", "tax_period_year", "tax_base", "vat", "stlg", "seller_tin", "seller_name"];
+  renderDataTable(document.getElementById("dlmTableScroll"), {
+    id: "dlm",
+    rows: st.processed.map((r, i) => ({ ...r, __idx: i })),
+    pageSize: 25,
+    searchPlaceholder: "Cari dokumen, pemasok, atau NPWP...",
+    getRowClass: (r, idx) => dlmRowClass(r, idx, APP.selDlm.has(idx)),
+    onRowClick: (r, idx, e) => {
       if (e.ctrlKey || e.metaKey) {
         if (APP.selDlm.has(idx)) APP.selDlm.delete(idx); else APP.selDlm.add(idx);
       } else {
         APP.selDlm = new Set([idx]);
       }
       renderDlmTable();
-    });
-    tr.addEventListener("dblclick", () => openDlmRowDialog(idx));
+    },
+    onRowDblClick: (r, idx) => openDlmRowDialog(idx),
+    columns: cols.map((c, i) => ({
+      id: keys[i],
+      header: c[0],
+      width: c[1],
+      align: c[2],
+      accessor: (r) => {
+        const key = keys[i];
+        if (key === "doc_date") return isoToDdMmYyyy(r.doc_date);
+        if (["tax_base", "vat", "stlg"].includes(key)) return fmtIdr(r[key]);
+        return r[key];
+      },
+      sortAccessor: (r) => r[keys[i]],
+    })),
   });
 }
 function choiceCode(value) {
@@ -1659,38 +1892,32 @@ function tdCell(val, align) {
 function renderTpkTable() {
   const st = APP.state;
   const cols = APP.bootstrap.out_cols;
-  let html = '<table class="dtable">' + colgroupHtml(cols) + "<thead><tr>";
-  cols.forEach((c) => {
-    html += `<th class="${thAlignClass(c[2])}">${escapeHtml(c[0])}</th>`;
+  const keys = ["no", "nama", "keterangan", "faktur", "tgl", "qty", "harga", "unit", "harga_jual", "diskon", "dpp", "dpp_nl", "tarif_ppn", "ppn", "tarif_ppnbm", "ppnbm"];
+  renderDataTable(document.getElementById("tpkTableScroll"), {
+    id: "tpk",
+    rows: st.processed.map((r, i) => ({ ...r, __idx: i })),
+    pageSize: 25,
+    searchPlaceholder: "Cari pelanggan, faktur, atau barang...",
+    columns: cols.map((c, i) => ({
+      id: keys[i],
+      header: c[0],
+      width: c[1],
+      align: c[2],
+      html: keys[i] === "faktur",
+      accessor: (r) => {
+        const key = keys[i];
+        if (key === "faktur" && st.dup_map[r.faktur] !== undefined) {
+          const [fg, bg] = APP.bootstrap.dup_colors[st.dup_map[r.faktur]];
+          return `<span class="dup-badge" style="color:${fg};background:${bg};">${escapeHtml(r.faktur)}</span>`;
+        }
+        if (["qty", "harga"].includes(key)) return fmtQty(r[key]);
+        if (["harga_jual", "diskon", "dpp", "dpp_nl", "ppn", "ppnbm"].includes(key)) return fmtIdr(r[key]);
+        if (["tarif_ppn", "tarif_ppnbm"].includes(key)) return `${r[key]}%`;
+        return r[key];
+      },
+      sortAccessor: (r) => r[keys[i]],
+    })),
   });
-  html += "</tr></thead><tbody>";
-  st.processed.forEach((r, i) => {
-    html += `<tr class="${i % 2 === 0 ? "row-a" : "row-b"}">`;
-    html += tdCell(r.no, "center");
-    html += tdCell(r.nama, "left");
-    html += tdCell(r.keterangan, "left");
-    if (st.dup_map[r.faktur] !== undefined) {
-      const [fg, bg] = APP.bootstrap.dup_colors[st.dup_map[r.faktur]];
-      html += `<td class="col-center"><span class="dup-badge" style="color:${fg};background:${bg};">${escapeHtml(r.faktur)}</span></td>`;
-    } else {
-      html += tdCell(r.faktur, "center");
-    }
-    html += tdCell(r.tgl, "center");
-    html += tdCell(fmtQty(r.qty), "right");
-    html += tdCell(fmtQty(r.harga), "right");
-    html += tdCell(r.unit, "center");
-    html += tdCell(fmtIdr(r.harga_jual), "right");
-    html += tdCell(fmtIdr(r.diskon), "right");
-    html += tdCell(fmtIdr(r.dpp), "right");
-    html += tdCell(fmtIdr(r.dpp_nl), "right");
-    html += tdCell(r.tarif_ppn + "%", "center");
-    html += tdCell(fmtIdr(r.ppn), "right");
-    html += tdCell(r.tarif_ppnbm + "%", "center");
-    html += tdCell(fmtIdr(r.ppnbm), "right");
-    html += "</tr>";
-  });
-  html += "</tbody></table>";
-  document.getElementById("tpkTableScroll").innerHTML = html;
 }
 function renderTpkView(body) {
   const st = APP.state;
@@ -1769,83 +1996,62 @@ function renderDateAlertHtml() {
 function renderFakturTable() {
   const st = APP.state;
   const cols = APP.bootstrap.faktur_cols;
-  let html = '<table class="dtable">' + colgroupHtml(cols) + "<thead><tr>";
-  cols.forEach((c) => { html += `<th class="${thAlignClass(c[2])}">${escapeHtml(c[0])}</th>`; });
-  html += "</tr></thead><tbody>";
-  st.faktur_rows.forEach((r, i) => {
-    const selected = APP.selFaktur.has(i);
-    html += `<tr class="${fakturRowClass(r, i, selected)}" data-idx="${i}">`;
-    html += tdCell(r.baris, "center");
-    html += tdCell(r.tgl_faktur, "center");
-    html += tdCell(r.jenis_faktur, "center");
-    html += tdCell(r.kode_transaksi, "center");
-    html += tdCell(r.ket_tambahan, "center");
-    html += tdCell(r.dok_pendukung, "center");
-    html += tdCell(r.referensi, "center");
-    html += tdCell(r.cap_fasilitas, "center");
-    html += tdCell(r.id_tku_penjual, "center");
-    html += tdCell(r.npwp_pembeli, "center");
-    html += tdCell(r.jenis_id, "center");
-    html += tdCell(r.negara, "center");
-    html += tdCell(r.no_dok_pembeli, "center");
-    html += tdCell(r.nama_pembeli, "left");
-    html += tdCell(r.alamat_pembeli, "left");
-    html += tdCell(r.email_pembeli, "center");
-    html += tdCell(r.id_tku_pembeli, "center");
-    html += "</tr>";
-  });
-  html += "</tbody></table>";
-  document.getElementById("fakturTableScroll").innerHTML = html;
-  document.querySelectorAll("#fakturTableScroll tbody tr").forEach((tr) => {
-    const idx = parseInt(tr.dataset.idx, 10);
-    tr.addEventListener("click", (e) => {
+  const keys = ["baris", "tgl_faktur", "jenis_faktur", "kode_transaksi", "ket_tambahan", "dok_pendukung", "referensi", "cap_fasilitas", "id_tku_penjual", "npwp_pembeli", "jenis_id", "negara", "no_dok_pembeli", "nama_pembeli", "alamat_pembeli", "email_pembeli", "id_tku_pembeli"];
+  renderDataTable(document.getElementById("fakturTableScroll"), {
+    id: "faktur",
+    rows: st.faktur_rows.map((r, i) => ({ ...r, __idx: i })),
+    pageSize: 25,
+    searchPlaceholder: "Cari faktur, pembeli, NPWP, atau referensi...",
+    getRowClass: (r, idx) => fakturRowClass(r, idx, APP.selFaktur.has(idx)),
+    onRowClick: (r, idx, e) => {
       if (e.ctrlKey || e.metaKey) {
         if (APP.selFaktur.has(idx)) APP.selFaktur.delete(idx); else APP.selFaktur.add(idx);
       } else {
         APP.selFaktur = new Set([idx]);
       }
       renderFakturTable();
-    });
-    tr.addEventListener("dblclick", () => openFakturFillDialog(idx));
+    },
+    onRowDblClick: (r, idx) => openFakturFillDialog(idx),
+    columns: cols.map((c, i) => ({
+      id: keys[i],
+      header: c[0],
+      width: c[1],
+      align: c[2],
+      accessor: keys[i],
+    })),
   });
 }
 function renderDetailTable() {
   const st = APP.state;
   const cols = APP.bootstrap.det_cols;
-  let html = '<table class="dtable">' + colgroupHtml(cols) + "<thead><tr>";
-  cols.forEach((c) => { html += `<th class="${thAlignClass(c[2])}">${escapeHtml(c[0])}</th>`; });
-  html += "</tr></thead><tbody>";
-  st.detail_rows.forEach((r, i) => {
-    const selected = APP.selDetail.has(r.original_idx);
-    html += `<tr class="${i % 2 === 0 ? "row-a" : "row-b"}${selected ? " selected" : ""}" data-idx="${r.original_idx}">`;
-    html += tdCell(r.baris, "center");
-    html += tdCell(r.detail_opt_label, "center");
-    html += tdCell(r.detail_code, "center");
-    html += tdCell(r.keterangan, "left");
-    html += tdCell(r.detail_unit_label, "center");
-    html += tdCell(fmtQty(r.harga), "right");
-    html += tdCell(fmtQty(r.qty), "right");
-    html += tdCell(fmtIdr(r.diskon), "right");
-    html += tdCell(fmtIdr(r.dpp), "right");
-    html += tdCell(fmtIdr(r.dpp_nl), "right");
-    html += tdCell("12%", "center");
-    html += tdCell(fmtIdr(r.ppn), "right");
-    html += tdCell("0%", "center");
-    html += tdCell(fmtIdr(0), "right");
-    html += "</tr>";
-  });
-  html += "</tbody></table>";
-  document.getElementById("detailTableScroll").innerHTML = html;
-  document.querySelectorAll("#detailTableScroll tbody tr").forEach((tr) => {
-    const idx = parseInt(tr.dataset.idx, 10);
-    tr.addEventListener("click", (e) => {
+  const keys = ["baris", "detail_opt_label", "detail_code", "keterangan", "detail_unit_label", "harga", "qty", "diskon", "dpp", "dpp_nl", "tarif_ppn", "ppn", "tarif_ppnbm", "ppnbm"];
+  renderDataTable(document.getElementById("detailTableScroll"), {
+    id: "detail",
+    rows: st.detail_rows.map((r, i) => ({ ...r, tarif_ppn: "12%", tarif_ppnbm: "0%", ppnbm: 0, __idx: r.original_idx, __row: i })),
+    pageSize: 25,
+    searchPlaceholder: "Cari detail barang, kode, atau baris...",
+    getRowClass: (r, idx, pageIdx) => `${pageIdx % 2 === 0 ? "row-a" : "row-b"}${APP.selDetail.has(idx) ? " selected" : ""}`,
+    onRowClick: (r, idx, e) => {
       if (e.ctrlKey || e.metaKey) {
         if (APP.selDetail.has(idx)) APP.selDetail.delete(idx); else APP.selDetail.add(idx);
       } else {
         APP.selDetail = new Set([idx]);
       }
       renderDetailTable();
-    });
+    },
+    columns: cols.map((c, i) => ({
+      id: keys[i],
+      header: c[0],
+      width: c[1],
+      align: c[2],
+      accessor: (r) => {
+        const key = keys[i];
+        if (["harga", "qty"].includes(key)) return fmtQty(r[key]);
+        if (["diskon", "dpp", "dpp_nl", "ppn", "ppnbm"].includes(key)) return fmtIdr(r[key]);
+        return r[key];
+      },
+      sortAccessor: (r) => r[keys[i]],
+    })),
   });
 }
 function wireTabs(container) {
@@ -2815,6 +3021,7 @@ function wireGlobalEvents() {
   });
 }
 async function init() {
+  await loadTanStack();
   const data = await apiGet("/api/bootstrap");
   APP.bootstrap = data;
   APP.state = data.state;

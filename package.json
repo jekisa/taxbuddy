@@ -1,0 +1,15 @@
+{
+  "name": "cortexfull",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Python Flask app for CORETAX/CORTEXFULL.",
+  "scripts": {
+    "build": "python -m py_compile app.py && node --check static/js/app.js && node --check public/static/js/app.js",
+    "dev": "python app.py",
+    "start": "python app.py"
+  },
+  "dependencies": {
+    "@tanstack/query-core": "^5.101.0",
+    "@tanstack/table-core": "^8.21.3"
+  }
+}
