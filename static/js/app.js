@@ -7,7 +7,7 @@ const APP = {
   bootstrap: null,
   state: null,
   theme: "Dark Executive",
-  view: "pajak_keluaran",
+  view: "dashboard",
   subView: "upload_mapping",
   pendingField: null,
   selFaktur: new Set(),
@@ -323,6 +323,26 @@ function wireTrialPill() {
 }
 function refreshTopbar() {
   const st = APP.state;
+  if (APP.view === "dashboard") {
+    const sub = (st && st.subscription) || {};
+    const status = sub.status === "active"
+      ? `${icon("check", "status-icon")} Dashboard langganan aktif`
+      : sub.status === "expired"
+        ? `${icon("lock", "status-icon")} Masa berlangganan sudah habis`
+        : `${icon("layoutDashboard", "status-icon")} Dashboard trial`;
+    const used = sub.used || Math.max(
+      (st.faktur_rows || []).length,
+      ((st.dlm || {}).processed || []).length,
+      ((st.sdl || {}).processed || []).length,
+    );
+    document.getElementById("statsFrame").innerHTML =
+      statPill("Package", sub.plan || "Trial") +
+      statPill("Status", sub.status || "trial") +
+      trialStatPill(used);
+    wireTrialPill();
+    document.getElementById("statusLabel").innerHTML = status;
+    return;
+  }
   if (APP.view === "spt_dokumen_lain") {
     const sdl = st.sdl;
     const totalDoc = sdl.processed.length;
@@ -388,6 +408,10 @@ function refreshTopbar() {
 }
 function refreshFileLabel() {
   const st = APP.state;
+  if (APP.view === "dashboard") {
+    document.getElementById("fileLabel").textContent = "Dashboard: subscription & aktivitas";
+    return;
+  }
   if (APP.view === "spt_dokumen_lain") {
     document.getElementById("fileLabel").textContent = "Input manual (tanpa file)";
     return;
@@ -397,6 +421,10 @@ function refreshFileLabel() {
 }
 function refreshExportSection() {
   const el = document.getElementById("exportSection");
+  if (APP.view === "dashboard") {
+    el.innerHTML = "";
+    return;
+  }
   if (APP.view === "spt_dokumen_lain") {
     el.innerHTML = `
       <label class="side-label">${icon("fileDown")} EXPORT SPT LAIN</label>

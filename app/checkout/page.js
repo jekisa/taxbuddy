@@ -180,7 +180,7 @@ function CheckoutContent() {
             <div className="checkout-success">
               <b>{planKey === "enterprise" ? "Permintaan diterima." : "Pembayaran berhasil diproses."}</b>
               <span>{planKey === "enterprise" ? "Tim TaxBuddy akan menghubungi Anda." : "Package akan aktif di akun Anda."}</span>
-              <a href="/app">Masuk ke aplikasi</a>
+              <a href="/app" target="_blank" rel="noopener noreferrer">Masuk ke aplikasi</a>
             </div>
           ) : null}
         </div>

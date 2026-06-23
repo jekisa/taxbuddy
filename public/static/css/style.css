@@ -1247,6 +1247,14 @@ table.dtable tbody td{
   font-size:14px;
   font-weight:500;
 }
+#pricing .pricing-note{
+  min-height:44px;
+  margin:-6px 0 18px;
+  color:#5C4F4A;
+  font-size:13px;
+  line-height:1.55;
+  text-align:center;
+}
 #pricing .pricing-cta{
   margin:0 0 22px;
   display:flex;

@@ -25,8 +25,8 @@ export async function POST(request) {
     const body = await request.json();
     const planKey = String(body.plan || "professional").toLowerCase();
     const plan = getBillingPlan(planKey);
-    if (!plan || planKey === "enterprise") {
-      return NextResponse.json({ error: "Package ini tidak memakai pembayaran otomatis Midtrans." }, { status: 400 });
+    if (!plan) {
+      return NextResponse.json({ error: "Package tidak dikenal." }, { status: 400 });
     }
 
     const db = await getDb();

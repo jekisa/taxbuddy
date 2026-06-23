@@ -10,9 +10,9 @@ const features = [
 ];
 
 const plans = [
-  ["Starter", "Rp299k", "/bulan", "", ["1 workspace aktif", "500 baris proses per bulan", "Template mapping dasar", "Export XLSX & XML", "Trial 10 invoice sebelum upgrade"], "Get started", "", "/auth?plan=starter"],
-  ["Professional", "Rp799k", "/bulan", "10% OFF", ["5 user seat", "10.000 baris proses per bulan", "Database penjual, pembeli, pemasok", "Dashboard riwayat export", "Priority support"], "Get started", "featured", "/auth?plan=professional"],
-  ["Enterprise", "Custom", "", "", ["Unlimited workspace", "Custom approval flow", "Dedicated onboarding", "SLA & support prioritas", "Integrasi dan deployment khusus"], "Get started", "", "/auth?plan=enterprise"],
+  ["Starter", "Rp799k", "/bulan", "", ["1.000 invoice/bulan", "Login multi-device", "Upload & mapping Excel", "Generate XML Coretax otomatis", "Arsip XML permanen", "Download XML kapan saja", "Dashboard histori proses" ], "Get started", "", "/auth?plan=starter"],
+  ["Professional", "Rp1.499k", "/bulan", "10% OFF", ["5.000 invoice/bulan", "Semua fitur Starter", "Database penjual, pembeli, pemasok", "Template mapping tersimpan", "Priority support"], "Get started", "featured", "/auth?plan=professional"],
+  ["Enterprise", "Rp2.999k", "/bulan", "", ["20.000 invoice/bulan", "Semua fitur Professional", "Audit trail", "Multi perusahaan", "Export history lanjutan"], "Get started", "", "/auth?plan=enterprise"],
 ];
 
 const workflow = [
@@ -99,7 +99,7 @@ export default function LandingPage() {
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
         </nav>
-        <a className="landing-nav-cta" href="/app">Mulai Gratis sekarang!</a>
+        <a className="landing-nav-cta" href="/app" target="_blank" rel="noopener noreferrer">Mulai Gratis sekarang!</a>
       </header>
 
       <section className="landing-hero">
@@ -114,7 +114,7 @@ export default function LandingPage() {
             <span>Multi-format Coretax</span>
           </div>
           <div className="landing-actions">
-            <a className="landing-btn primary" href="/app">Mulai Gratis sekarang!</a>
+            <a className="landing-btn primary" href="/app" target="_blank" rel="noopener noreferrer">Mulai Gratis sekarang!</a>
             <a className="landing-btn secondary" href="#demo">Lihat Demo sekarang!</a>
           </div>
           <div className="social-proof" aria-label="Social proof TaxBuddy">
@@ -246,12 +246,12 @@ export default function LandingPage() {
             <div className="demo-copy">
               <p>Get an inside look at how teams upload Excel, apply mapping templates, validate invoice data, and export Coretax-ready files consistently.</p>
               <div className="demo-actions">
-                <a className="demo-btn primary" href="/app">Mulai Gratis</a>
+                <a className="demo-btn primary" href="/app" target="_blank" rel="noopener noreferrer">Mulai Gratis</a>
                 <a className="demo-btn secondary" href="#pricing">Pricing Plans →</a>
               </div>
             </div>
           </div>
-          <a className="demo-video-frame" href="/app" aria-label="Lihat demo TaxBuddy">
+          <a className="demo-video-frame" href="/app" target="_blank" rel="noopener noreferrer" aria-label="Lihat demo TaxBuddy">
             <img src="/static/img/demo-video-thumb.png" alt="Demo TaxBuddy automation workspace" />
             <span className="demo-play">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -266,7 +266,7 @@ export default function LandingPage() {
         <div className="pricing-heading">
           <h2>Our pricing plans</h2>
           <p>Pilih paket yang paling pas untuk volume invoice, workflow Coretax, dan kebutuhan tim pajak Anda.</p>
-          <a href="/app">Mulai trial gratis untuk 10 invoice</a>
+          <a href="/app" target="_blank" rel="noopener noreferrer">Mulai trial gratis untuk 10 invoice</a>
         </div>
         <div className="pricing-grid">
           {plans.map(([name, price, period, discount, items, cta, modifier, href]) => (
@@ -276,7 +276,7 @@ export default function LandingPage() {
               <p className="price">{price}{period ? <span>{period}</span> : null}</p>
               <a className="pricing-cta" href={href}>{cta}</a>
               <b className="pricing-benefits">Benefits</b>
-              <ul>{items.map((item) => <li key={item}><span aria-hidden="true">&check;</span>{item}</li>)}</ul>
+              <ul>{items.map((item) => <li key={item}><span aria-hidden="true"></span>{item}</li>)}</ul>
             </article>
           ))}
         </div>
