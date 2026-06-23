@@ -271,7 +271,7 @@ export default function LandingPage() {
         <div className="pricing-grid">
           {plans.map(([name, price, period, discount, items, cta, modifier, href]) => (
             <article className={`price-card ${modifier}`} key={name}>
-              {modifier === "featured" ? <div className="badge">Popular Plan</div> : null}
+              {modifier === "featured" ? <div className="badge">POPULAR PLAN</div> : null}
               <h3>{name} plan {discount ? <span>{discount}</span> : null}</h3>
               <p className="price">{price}{period ? <span>{period}</span> : null}</p>
               <a className="pricing-cta" href={href}>{cta}</a>

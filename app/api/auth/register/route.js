@@ -8,13 +8,17 @@ export async function POST(request) {
     const password = String(body.password || "");
     const name = String(body.name || "").trim();
     const company = String(body.company || "").trim();
-    const plan = String(body.plan || "starter").toLowerCase();
+    const phone = String(body.phone || "").trim();
+    const plan = body.plan ? String(body.plan).toLowerCase() : "";
 
-    if (!email || !password || !name || !company) {
-      return NextResponse.json({ error: "Nama, perusahaan, email, dan password wajib diisi." }, { status: 400 });
+    if (!email || !password || !name || !company || !phone) {
+      return NextResponse.json({ error: "Nama, perusahaan, no handphone, email, dan password wajib diisi." }, { status: 400 });
     }
     if (password.length < 8) {
       return NextResponse.json({ error: "Password minimal 8 karakter." }, { status: 400 });
+    }
+    if (!/^[+\d][\d\s().-]{7,20}$/.test(phone)) {
+      return NextResponse.json({ error: "Format no handphone tidak valid." }, { status: 400 });
     }
 
     const db = await getDb();
@@ -25,23 +29,24 @@ export async function POST(request) {
       passwordHash: hashPassword(password),
       name,
       company,
+      phone,
       role: "owner",
       createdAt: now,
       updatedAt: now,
     });
 
-    const subscriptionDoc = {
+    const subscriptionDoc = plan ? {
       userId: result.insertedId,
       plan,
       status: "pending_payment",
       createdAt: now,
       updatedAt: now,
-    };
-    await db.collection("subscriptions").insertOne(subscriptionDoc);
+    } : null;
+    if (subscriptionDoc) await db.collection("subscriptions").insertOne(subscriptionDoc);
 
     const res = NextResponse.json({
-      user: { id: String(result.insertedId), email, name, company },
-      subscription: { plan, status: "pending_payment" },
+      user: { id: String(result.insertedId), email, name, company, phone },
+      subscription: subscriptionDoc ? { plan, status: "pending_payment" } : null,
     });
     setAuthCookies(res, result.insertedId, subscriptionDoc);
     return res;

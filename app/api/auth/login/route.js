@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isSubscriptionActive } from "../../../../lib/billing";
 import {
   ensureIndexes,
   getDb,
@@ -14,7 +15,7 @@ export async function POST(request) {
     const body = await request.json();
     const email = normalizeEmail(body.email);
     const password = String(body.password || "");
-    const plan = String(body.plan || "starter").toLowerCase();
+    const requestedPlan = body.plan ? String(body.plan).toLowerCase() : "";
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email dan password wajib diisi." }, { status: 400 });
@@ -29,19 +30,25 @@ export async function POST(request) {
     }
 
     const now = new Date();
-    await db.collection("subscriptions").updateOne(
-      { userId: user._id, status: { $in: ["pending_payment", "sales_requested"] } },
-      {
-        $set: { plan, status: "pending_payment", updatedAt: now },
-        $setOnInsert: { userId: user._id, createdAt: now },
-      },
-      { upsert: true },
-    );
-
-    const subscription = await db.collection("subscriptions").findOne(
+    let subscription = await db.collection("subscriptions").findOne(
       { userId: user._id },
       { sort: { updatedAt: -1 } },
     );
+
+    if (requestedPlan && !isSubscriptionActive(subscription, now)) {
+      await db.collection("subscriptions").updateOne(
+        { userId: user._id, status: "pending_payment" },
+        {
+          $set: { plan: requestedPlan, status: "pending_payment", updatedAt: now },
+          $setOnInsert: { userId: user._id, createdAt: now },
+        },
+        { upsert: true },
+      );
+      subscription = await db.collection("subscriptions").findOne(
+        { userId: user._id },
+        { sort: { updatedAt: -1 } },
+      );
+    }
 
     const res = NextResponse.json({
       user: publicUser(user),

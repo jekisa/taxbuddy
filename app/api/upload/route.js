@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { archiveUploadedWorkbook } from "../../../lib/archive";
+import { currentAccountAccess } from "../../../lib/auth-access";
 import {
   loadWorkspace,
   publicWorkspaceState,
@@ -21,7 +23,20 @@ export async function POST(request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const cookieStore = await cookies();
     const workspace = await loadWorkspace(cookieStore);
+    const account = await currentAccountAccess(cookieStore);
     const state = readExcelWorkbook(buffer, file.name || "upload.xlsx");
+    if (account.active) {
+      const archiveId = await archiveUploadedWorkbook({
+        userId: account.userId,
+        module: "pajak_keluaran",
+        filename: file.name || "upload.xlsx",
+        mime: file.type,
+        buffer,
+        state,
+      });
+      state.archive_ids = { ...(state.archive_ids || {}), pajak_keluaran: String(archiveId) };
+      state.subscription = account.access;
+    }
 
     await saveWorkspace(workspace.id, state);
     const res = NextResponse.json({ state: publicWorkspaceState(state) });

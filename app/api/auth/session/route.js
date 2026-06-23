@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { effectiveSubscriptionExpiresAt } from "../../../../lib/billing";
 import { isProduction } from "../../../../lib/env";
 import {
   ensureIndexes,
@@ -47,10 +48,11 @@ export async function GET() {
       { userId },
       { sort: { updatedAt: -1 } },
     );
-    if (subscription?.status === "active" && subscription.expiresAt && new Date(subscription.expiresAt).getTime() <= Date.now()) {
+    const expiresAt = effectiveSubscriptionExpiresAt(subscription);
+    if (subscription?.status === "active" && expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
       await db.collection("subscriptions").updateOne(
         { _id: subscription._id },
-        { $set: { status: "expired", updatedAt: new Date() } },
+        { $set: { status: "expired", expiresAt, updatedAt: new Date() } },
       );
       subscription = await db.collection("subscriptions").findOne({ _id: subscription._id });
     }

@@ -30,6 +30,8 @@ export default function WorkspacePage() {
           <div className="export-section" id="exportSection" />
           <div className="hr" />
           <div className="file-label" id="fileLabel">File: belum ada</div>
+          <div className="hr" />
+          <div className="account-section" id="accountSection" />
         </aside>
 
         <div className="main">

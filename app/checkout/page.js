@@ -5,22 +5,42 @@ import { useSearchParams } from "next/navigation";
 
 const PLANS = {
   starter: {
-    name: "Starter",
-    price: "Rp299.000",
-    period: "/bulan",
-    items: ["1 workspace", "500 baris proses per bulan", "Template mapping dasar", "Export XLSX & XML"],
-  },
-  professional: {
-    name: "Professional",
+    name: "Starter plan",
     price: "Rp799.000",
     period: "/bulan",
-    items: ["5 user seat", "10.000 baris proses per bulan", "Database transaksi", "Priority support"],
+    items: [
+      "1.000 invoice/bulan",
+      "Login multi-device",
+      "Upload & mapping Excel",
+      "Generate XML Coretax otomatis",
+      "Arsip XML permanen",
+      "Download XML kapan saja",
+      "Dashboard histori proses",
+    ],
+  },
+  professional: {
+    name: "Professional plan",
+    price: "Rp1.499.000",
+    period: "/bulan",
+    items: [
+      "5.000 invoice/bulan",
+      "Semua fitur Starter",
+      "Database penjual, pembeli, pemasok",
+      "Template mapping tersimpan",
+      "Priority support",
+    ],
   },
   enterprise: {
-    name: "Enterprise",
-    price: "Custom",
-    period: "",
-    items: ["Unlimited workspace", "Custom approval flow", "Dedicated onboarding", "SLA prioritas"],
+    name: "Enterprise plan",
+    price: "Rp2.999.000",
+    period: "/bulan",
+    items: [
+      "20.000 invoice/bulan",
+      "Semua fitur Professional",
+      "Audit trail",
+      "Multi perusahaan",
+      "Export history lanjutan",
+    ],
   },
 };
 
@@ -33,7 +53,7 @@ function CheckoutContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [orderId, setOrderId] = useState(params.get("order_id") || "");
-  const tax = useMemo(() => plan.price.startsWith("Rp") ? "Termasuk PPN sesuai invoice" : "Tim sales akan menghubungi Anda", [plan.price]);
+  const tax = useMemo(() => "Termasuk PPN sesuai invoice", []);
 
   useEffect(() => {
     let active = true;
@@ -94,36 +114,7 @@ function CheckoutContent() {
     setIsLoading(true);
     setMessage("");
     try {
-      if (planKey !== "enterprise") {
-        const response = await fetch("/api/payments/midtrans/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan: planKey }),
-        });
-        const data = await response.json();
-        if (response.status === 401) {
-          window.location.href = `/auth?plan=${encodeURIComponent(planKey)}`;
-          return;
-        }
-        if (!response.ok) {
-          throw new Error(data.error || "Gagal membuat pembayaran Midtrans.");
-        }
-        if (!data.clientKey) {
-          throw new Error("NEXT_PUBLIC_MIDTRANS_CLIENT_KEY belum diset.");
-        }
-
-        setOrderId(data.orderId);
-        await loadSnap(data.snapScript, data.clientKey);
-        window.snap.pay(data.token, {
-          onSuccess: () => syncPayment(data.orderId),
-          onPending: () => syncPayment(data.orderId),
-          onError: () => setMessage("Pembayaran gagal diproses oleh Midtrans."),
-          onClose: () => setMessage("Popup pembayaran ditutup. Anda bisa klik tombol bayar lagi untuk melanjutkan."),
-        });
-        return;
-      }
-
-      const response = await fetch("/api/subscriptions/activate", {
+      const response = await fetch("/api/payments/midtrans/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: planKey }),
@@ -134,9 +125,21 @@ function CheckoutContent() {
         return;
       }
       if (!response.ok) {
-        throw new Error(data.error || "Pembayaran belum bisa diproses.");
+        throw new Error(data.error || "Gagal membuat pembayaran Midtrans.");
       }
-      setPaid(true);
+      if (!data.clientKey) {
+        throw new Error("NEXT_PUBLIC_MIDTRANS_CLIENT_KEY belum diset.");
+      }
+
+      setOrderId(data.orderId);
+      await loadSnap(data.snapScript, data.clientKey);
+      window.snap.pay(data.token, {
+        onSuccess: () => syncPayment(data.orderId),
+        onPending: () => syncPayment(data.orderId),
+        onError: () => setMessage("Pembayaran gagal diproses oleh Midtrans."),
+        onClose: () => setMessage("Popup pembayaran ditutup. Anda bisa klik tombol bayar lagi untuk melanjutkan."),
+      });
+      return;
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -171,15 +174,15 @@ function CheckoutContent() {
           {user ? <p className="checkout-help">Akun: {user.email}</p> : null}
 
           <button className="checkout-pay-btn" onClick={activateSubscription} disabled={isLoading || !user}>
-            {isLoading ? "Memproses..." : planKey === "enterprise" ? "Kirim permintaan sales" : "Bayar dan aktifkan package"}
+            {isLoading ? "Memproses..." : "Bayar dan aktifkan package"}
           </button>
 
           {message ? <div className="auth-message"><span>{message}</span></div> : null}
 
           {paid ? (
             <div className="checkout-success">
-              <b>{planKey === "enterprise" ? "Permintaan diterima." : "Pembayaran berhasil diproses."}</b>
-              <span>{planKey === "enterprise" ? "Tim TaxBuddy akan menghubungi Anda." : "Package akan aktif di akun Anda."}</span>
+              <b>Pembayaran berhasil diproses.</b>
+              <span>Package akan aktif di akun Anda.</span>
               <a href="/app" target="_blank" rel="noopener noreferrer">Masuk ke aplikasi</a>
             </div>
           ) : null}

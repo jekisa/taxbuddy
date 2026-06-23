@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { updateArchiveProcessing } from "../../../lib/archive";
+import { currentAccountAccess } from "../../../lib/auth-access";
 import {
   loadWorkspace,
   processWorkspaceState,
@@ -19,6 +21,16 @@ export async function POST() {
     }
 
     const state = processWorkspaceState(workspace.state);
+    const account = await currentAccountAccess(cookieStore);
+    if (account.active) {
+      state.subscription = account.access;
+      await updateArchiveProcessing({
+        userId: account.userId,
+        archiveId: state.archive_ids?.pajak_keluaran,
+        module: "pajak_keluaran",
+        state,
+      });
+    }
     await saveWorkspace(workspace.id, state);
     const res = NextResponse.json({ state: publicWorkspaceState(state) });
     setWorkspaceCookie(res, workspace.id);

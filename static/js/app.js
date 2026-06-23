@@ -73,6 +73,19 @@ async function loadAuthSession() {
     return null;
   }
 }
+function currentUser() {
+  return ((APP.auth || {}).user) || null;
+}
+async function logoutUser() {
+  try {
+    await apiDelete("/api/auth/session");
+    APP.auth = null;
+    toast("Logout berhasil.", "success");
+    window.location.href = "/auth?mode=login";
+  } catch (err) {
+    toast(err.message || "Logout gagal.", "error");
+  }
+}
 async function loadTanStack() {
   try {
     ensureBrowserProcessEnv();
@@ -116,6 +129,13 @@ function fmtIdr(val) {
   if (isNaN(n)) return String(val);
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  if (!bytes) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 function fmtQty(val) {
   const n = Number(val);
   if (isNaN(n)) return String(val ?? "");
@@ -155,6 +175,8 @@ const ICONS = {
   hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
   layoutDashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  logIn: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
+  logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
   menu: '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
   package: '<path d="m16.5 9.4-9-5.2"/><path d="m21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
   panelLeft: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
@@ -235,6 +257,7 @@ const NAV_ITEMS = [
   { id: "spt_dokumen_lain", label: "SPT Dokumen Lain", icon: "bookOpen" },
   { divider: true },
   { id: "database", label: "Database", icon: "database" },
+  { id: "archive", label: "Arsip Dokumen", icon: "archive" },
 ];
 const PK_SUBTABS = [
   { id: "upload_mapping", label: "Upload & Mapping" },
@@ -251,6 +274,7 @@ const NAV_ICON_MAP = {
   doc_lain_masukan: "fileDown",
   spt_dokumen_lain: "bookOpen",
   database: "database",
+  archive: "archive",
 };
 function authSubscriptionAccess() {
   return (((APP.auth || {}).subscription || {}).access) || null;
@@ -288,6 +312,36 @@ function buildNav() {
     nav.appendChild(el);
   });
 }
+function refreshAccountSection() {
+  const el = document.getElementById("accountSection");
+  if (!el) return;
+  const user = currentUser();
+  if (user) {
+    el.innerHTML = `
+      <div class="account-card">
+        <div class="account-meta">
+          <span class="account-label">Akun</span>
+          <strong>${escapeHtml(user.name || user.email || "User")}</strong>
+          <span>${escapeHtml(user.email || "")}</span>
+        </div>
+        <button class="pill pill-ghost pill-block" id="btnLogout">${icon("logOut")} Logout</button>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="account-card">
+        <div class="account-meta">
+          <span class="account-label">Akun</span>
+          <strong>Trial</strong>
+          <span>Belum login</span>
+        </div>
+        <a class="pill pill-primary pill-block account-login" href="/auth?plan=professional">${icon("logIn")} Login</a>
+      </div>
+    `;
+  }
+  const btn = document.getElementById("btnLogout");
+  if (btn) btn.addEventListener("click", logoutUser);
+}
 function onNavClick(id) {
   const locked = new Set(((APP.state && APP.state.subscription) || {}).locked_features || []);
   if (locked.has(id)) {
@@ -297,7 +351,9 @@ function onNavClick(id) {
         ? "Masa berlangganan sudah habis. Perpanjang package untuk membuka kembali seluruh menu."
         : id === "doc_lain_masukan"
           ? "Doc Lain Masukan terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini."
-          : "SPT Dokumen Lain terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini.",
+          : id === "archive"
+            ? "Arsip Dokumen hanya tersedia untuk akun berlangganan aktif."
+            : "SPT Dokumen Lain terkunci untuk paket Trial. Login dan pilih package berbayar untuk membuka fitur ini.",
       upgrade_required: true,
       feature_locked: sub.status !== "expired",
       subscription_expired: sub.status === "expired",
@@ -349,6 +405,15 @@ function refreshTopbar() {
       trialStatPill(used);
     wireTrialPill();
     document.getElementById("statusLabel").innerHTML = status;
+    return;
+  }
+  if (APP.view === "archive") {
+    const sub = (st && st.subscription) || {};
+    document.getElementById("statsFrame").innerHTML =
+      statPill("Package", sub.plan || "Active") +
+      statPill("Status", sub.status || "active") +
+      statPill("Storage", "MongoDB");
+    document.getElementById("statusLabel").innerHTML = `${icon("archive", "status-icon")} Arsip dokumen upload dan export`;
     return;
   }
   if (APP.view === "spt_dokumen_lain") {
@@ -420,6 +485,10 @@ function refreshFileLabel() {
     document.getElementById("fileLabel").textContent = "Dashboard: subscription & aktivitas";
     return;
   }
+  if (APP.view === "archive") {
+    document.getElementById("fileLabel").textContent = "Arsip: file upload dan hasil export";
+    return;
+  }
   if (APP.view === "spt_dokumen_lain") {
     document.getElementById("fileLabel").textContent = "Input manual (tanpa file)";
     return;
@@ -429,7 +498,7 @@ function refreshFileLabel() {
 }
 function refreshExportSection() {
   const el = document.getElementById("exportSection");
-  if (APP.view === "dashboard") {
+  if (APP.view === "dashboard" || APP.view === "archive") {
     el.innerHTML = "";
     return;
   }
@@ -770,6 +839,7 @@ function render() {
   refreshTopbar();
   refreshFileLabel();
   refreshExportSection();
+  refreshAccountSection();
   const body = document.getElementById("body");
   body.innerHTML = "";
   if (isSubscriptionExpired()) {
@@ -778,6 +848,8 @@ function render() {
   }
   if (APP.view === "dashboard") {
     renderDashboardView(body);
+  } else if (APP.view === "archive") {
+    renderArchiveView(body);
   } else if (APP.view === "pajak_keluaran") {
     renderPajakKeluaranView(body);
   } else if (APP.view === "doc_lain_masukan") {
@@ -882,10 +954,12 @@ function dashboardInsights(data) {
   const st = APP.state || {};
   const sub = st.subscription || {};
   const authSub = ((APP.auth || {}).subscription || {});
+  const authAccess = authSub.access || {};
   const items = data.items || [];
   const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
   const invoicesThisMonth = items.filter((it) => monthKeyFromDateText(it.tgl_faktur || it.exported_at) === currentMonth).length;
-  const remainingDays = daysUntil(sub.expiresAt || authSub.expiresAt);
+  const expiresAt = sub.expiresAt || authSub.expiresAt || authAccess.expiresAt;
+  const remainingDays = daysUntil(expiresAt);
   const planName = sub.plan || authSub.plan || "Trial";
   const status = sub.status || authSub.status || "trial";
   const processedInvoices = (st.faktur_rows || []).length;
@@ -902,7 +976,7 @@ function dashboardInsights(data) {
     sdlDocs,
     quotaLabel,
     remainingDays,
-    expiresAt: sub.expiresAt || authSub.expiresAt,
+    expiresAt,
     exportedTotal: data.total || 0,
   };
 }
@@ -983,6 +1057,180 @@ function renderDashboardView(body) {
   });
 }
 
+/* ==================== VIEW: ARSIP DOKUMEN ==================== */
+function archiveExportButtons(item) {
+  const exports = item.exports || [];
+  if (!exports.length) return `<span class="muted-text">Belum ada export</span>`;
+  return exports.map((file) => `
+    <button class="pill pill-ghost pill-sm archive-download" data-archive="${escapeHtml(item.id)}" data-export="${escapeHtml(file.id)}" data-name="${escapeHtml(file.filename)}">
+      ${icon(file.kind === "xml" ? "fileDown" : "fileSpreadsheet")} ${escapeHtml(String(file.kind || "").toUpperCase())}
+    </button>
+  `).join("");
+}
+async function loadArchivedUpload(archiveId, filename = "arsip") {
+  const data = await apiPost("/api/archives", { action: "load", archiveId });
+  APP.view = data.module === "doc_lain_masukan" ? "doc_lain_masukan" : "pajak_keluaran";
+  if (data.module === "doc_lain_masukan") APP.dlmSubView = "upload_mapping";
+  else APP.subView = "upload_mapping";
+  closeModal();
+  applyState(data.state);
+  toast(`File "${filename}" dimuat ulang dari arsip.`, "success");
+}
+async function openArchiveLoadModal(module) {
+  const title = module === "doc_lain_masukan" ? "Load File Doc Lain Masukan" : "Load File Pajak Keluaran";
+  openModal({
+    title,
+    subtitle: "Pilih file Excel yang pernah diupload dan tersimpan di arsip.",
+    bodyHtml: `<div class="archive-picker" id="archivePicker">${emptyHint("Memuat arsip...")}</div>`,
+    width: "760px",
+    onMount: async (modal) => {
+      const picker = modal.querySelector("#archivePicker");
+      try {
+        const data = await apiGet("/api/archives");
+        const items = (data.items || []).filter((item) => item.module === module && item.canLoad);
+        if (!items.length) {
+          picker.innerHTML = emptyHint("Belum ada file upload yang bisa dimuat ulang untuk menu ini. Upload file baru agar arsip berikutnya bisa diproses ulang.");
+          return;
+        }
+        picker.innerHTML = items.map((item) => `
+          <div class="archive-picker-row">
+            <div>
+              <strong>${escapeHtml(item.sourceName)}</strong>
+              <span>${escapeHtml(item.moduleLabel)} &middot; ${item.rawRowCount || 0} baris &middot; update ${escapeHtml(formatDateId(item.updatedAt))}</span>
+            </div>
+            <button class="pill pill-primary pill-sm" data-load-archive="${escapeHtml(item.id)}" data-name="${escapeHtml(item.sourceName)}">${icon("folderOpen")} Load File</button>
+          </div>
+        `).join("");
+        picker.querySelectorAll("[data-load-archive]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = "Memuat...";
+            try {
+              await loadArchivedUpload(btn.dataset.loadArchive, btn.dataset.name || "arsip");
+            } catch (err) {
+              toast(err.message, "error");
+              btn.disabled = false;
+              btn.innerHTML = original;
+            }
+          });
+        });
+      } catch (err) {
+        picker.innerHTML = emptyHint(err.message);
+      }
+    },
+  });
+}
+function renderArchiveRows(wrap, data) {
+  const rows = (data.items || []).map((item, index) => ({
+    ...item,
+    no: index + 1,
+    createdLabel: formatDateId(item.createdAt),
+    updatedLabel: formatDateId(item.updatedAt),
+    sourceLabel: `${item.sourceName || "-"} (${formatBytes(item.sourceSize)})`,
+    exportCountLabel: `${(item.exports || []).length} file`,
+    sourceAction: item.sourceName && item.sourceName !== "-"
+      ? `<div class="archive-action-stack">
+          ${item.canLoad ? `<button class="pill pill-primary pill-sm archive-load" data-archive="${escapeHtml(item.id)}" data-name="${escapeHtml(item.sourceName)}">${icon("folderOpen")} Load</button>` : ""}
+          <button class="pill pill-ghost pill-sm archive-source" data-archive="${escapeHtml(item.id)}" data-name="${escapeHtml(item.sourceName)}">${icon("fileDown")} Download</button>
+        </div>`
+      : `<span class="muted-text">Tidak ada file</span>`,
+    exportActions: archiveExportButtons(item),
+  }));
+  wrap.querySelector("#archiveCards").innerHTML = `
+    ${dashboardMetric("archive", "Total Arsip", String(data.total || 0), "File upload tersimpan")}
+    ${dashboardMetric("fileSpreadsheet", "Total Excel", String(rows.filter((row) => row.sourceName && row.sourceName !== "-").length), "Bisa diunduh ulang")}
+    ${dashboardMetric("fileDown", "Total Export", String(rows.reduce((sum, row) => sum + ((row.exports || []).length), 0)), "XLSX/XML tersimpan")}
+  `;
+  const tableEl = wrap.querySelector("#archiveTableScroll");
+  if (!rows.length) {
+    tableEl.innerHTML = emptyHint("Belum ada arsip. Upload dan export file saat subscription aktif untuk mulai menyimpan dokumen.");
+    return;
+  }
+  renderDataTable(tableEl, {
+    id: "archives",
+    rows,
+    pageSize: 10,
+    searchPlaceholder: "Cari modul, file, atau tanggal...",
+    columns: [
+      { id: "no", header: "No", accessor: "no", width: 54, align: "center" },
+      { id: "moduleLabel", header: "Modul", accessor: "moduleLabel", width: 170, align: "left" },
+      { id: "sourceLabel", header: "File Upload", accessor: "sourceLabel", width: 280, align: "left" },
+      { id: "rawRowCount", header: "Baris", accessor: "rawRowCount", width: 90, align: "right" },
+      { id: "invoiceCount", header: "Invoice/Dok", accessor: "invoiceCount", width: 110, align: "right" },
+      { id: "updatedLabel", header: "Update", accessor: "updatedLabel", width: 130, align: "center" },
+      { id: "sourceAction", header: "File Upload", accessor: "sourceAction", width: 230, align: "center", html: true, sortable: false },
+      { id: "exportActions", header: "Download Export", accessor: "exportActions", width: 260, align: "left", html: true, sortable: false },
+    ],
+  });
+  tableEl.querySelectorAll(".archive-load").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = "Memuat...";
+      try {
+        await loadArchivedUpload(btn.dataset.archive, btn.dataset.name || "arsip");
+      } catch (err) {
+        toast(err.message, "error");
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    });
+  });
+  tableEl.querySelectorAll(".archive-source").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      try {
+        const filename = await downloadFile(`/api/archives/${btn.dataset.archive}/source`, btn.dataset.name || "upload.xlsx");
+        toast(`File "${filename}" diunduh dari arsip.`, "success");
+      } catch (err) { toast(err.message, "error"); }
+    });
+  });
+  tableEl.querySelectorAll(".archive-download").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      try {
+        const filename = await downloadFile(`/api/archives/${btn.dataset.archive}/exports/${btn.dataset.export}`, btn.dataset.name || "export.xml");
+        toast(`File "${filename}" diunduh dari arsip.`, "success");
+      } catch (err) { toast(err.message, "error"); }
+    });
+  });
+}
+async function loadArchiveData(wrap) {
+  wrap.querySelector("#archiveCards").innerHTML = emptyHint("Memuat arsip...");
+  wrap.querySelector("#archiveTableScroll").innerHTML = "";
+  try {
+    const data = await queryGet(["archives"], "/api/archives");
+    renderArchiveRows(wrap, data);
+  } catch (err) {
+    wrap.querySelector("#archiveCards").innerHTML = "";
+    wrap.querySelector("#archiveTableScroll").innerHTML = emptyHint(err.message);
+  }
+}
+function renderArchiveView(body) {
+  const wrap = document.createElement("div");
+  wrap.className = "view-archive";
+  wrap.innerHTML = `
+    <div class="subhdr">
+      <span class="tt">Arsip Dokumen</span>
+      <span class="sep">File Excel upload dan hasil export tersimpan untuk akun aktif.</span>
+      <span class="spacer"></span>
+      <div class="btn-row">
+        <button class="pill pill-ghost pill-sm" id="btnRefreshArchive">${icon("refresh")} Refresh</button>
+      </div>
+    </div>
+    <div class="dash-cards archive-cards" id="archiveCards"></div>
+    <div class="archive-table-wrap"><div class="table-scroll" id="archiveTableScroll"></div></div>
+  `;
+  body.appendChild(wrap);
+  loadArchiveData(wrap);
+  wrap.querySelector("#btnRefreshArchive").addEventListener("click", () => {
+    invalidateQueries(["archives"]);
+    loadArchiveData(wrap);
+  });
+}
+
 /* ==================== VIEW: UPLOAD ==================== */
 function pillStat(label, value) {
   return `<div class="pill-stat"><div class="v">${value}</div><div class="l">${escapeHtml(label)}</div></div>`;
@@ -998,6 +1246,7 @@ function renderUploadView(body) {
       <div class="hr"></div>
       <div class="btn-row">
         <button class="pill pill-primary" id="btnPickFile">${icon("upload")} Pilih File Excel</button>
+        <button class="pill pill-ghost" id="btnLoadArchiveFile">${icon("archive")} Load File Arsip</button>
         <button class="pill pill-ghost" id="btnPickTemplate">${icon("folderOpen")} Load Template</button>
       </div>
       <div class="hr"></div>
@@ -1009,6 +1258,7 @@ function renderUploadView(body) {
     </div>`;
   body.appendChild(wrap);
   wrap.querySelector("#btnPickFile").addEventListener("click", () => document.getElementById("fileInput").click());
+  wrap.querySelector("#btnLoadArchiveFile").addEventListener("click", () => openArchiveLoadModal("pajak_keluaran"));
   wrap.querySelector("#btnPickTemplate").addEventListener("click", () => openDatabaseModal("templates"));
 }
 
@@ -1024,10 +1274,12 @@ function renderDlmUploadView(body) {
       <div class="hr"></div>
       <div class="btn-row">
         <button class="pill pill-primary" id="btnDlmPickFile">${icon("upload")} Pilih File Excel</button>
+        <button class="pill pill-ghost" id="btnDlmLoadArchiveFile">${icon("archive")} Load File Arsip</button>
       </div>
     </div>`;
   body.appendChild(wrap);
   wrap.querySelector("#btnDlmPickFile").addEventListener("click", () => document.getElementById("fileInputDlm").click());
+  wrap.querySelector("#btnDlmLoadArchiveFile").addEventListener("click", () => openArchiveLoadModal("doc_lain_masukan"));
 }
 
 /* ==================== MODULE: SPT DOKUMEN LAIN (input manual) ==================== */
@@ -3111,6 +3363,7 @@ async function withExportLock(btn, fn) {
 async function doExportXlsx() {
   try {
     const filename = await downloadFile("/api/export/xlsx", "export_cortex.xlsx");
+    invalidateQueries(["archives"]);
     toast(`File "${filename}" diunduh.`, "success");
   } catch (err) { toast(err.message, "error"); }
 }
@@ -3119,6 +3372,7 @@ async function doExportXml() {
     const nInv = new Set(APP.state.processed.map((r) => r.faktur)).size;
     const nGoods = APP.state.processed.length;
     const filename = await downloadFile("/api/export/xml", "export_coretax.xml");
+    invalidateQueries(["archives"]);
     toast(`File "${filename}" diunduh (${nInv} faktur, ${nGoods} barang/jasa).`, "success");
   } catch (err) { toast(err.message, "error"); }
 }
@@ -3155,6 +3409,7 @@ async function exportXml() {
 async function doExportDlmXlsx() {
   try {
     const filename = await downloadFile("/api/dlm/export/xlsx", "doc_lain.xlsx");
+    invalidateQueries(["archives"]);
     toast(`File "${filename}" diunduh.`, "success");
   } catch (err) { toast(err.message, "error"); }
 }
@@ -3162,6 +3417,7 @@ async function doExportDlmXml() {
   try {
     const n = APP.state.dlm.processed.length;
     const filename = await downloadFile("/api/dlm/export/xml", "doc_lain_coretax.xml");
+    invalidateQueries(["archives"]);
     toast(`File "${filename}" diunduh (${n} dokumen).`, "success");
   } catch (err) { toast(err.message, "error"); }
 }
@@ -3192,6 +3448,7 @@ async function doExportSdlXml() {
   try {
     const n = APP.state.sdl.processed.length;
     const filename = await downloadFile("/api/sdl/export/xml", "spt_lain_coretax.xml");
+    invalidateQueries(["archives"]);
     toast(`File "${filename}" diunduh (${n} dokumen).`, "success");
   } catch (err) { toast(err.message, "error"); }
 }
@@ -3235,6 +3492,7 @@ function wireGlobalEvents() {
       APP.view = "pajak_keluaran";
       APP.subView = "upload_mapping";
       applyState(data.state);
+      invalidateQueries(["archives"]);
       toast(`File "${file.name}" dimuat — ${data.state.raw_row_count} baris.`, "success");
     } catch (err) { toast(err.message, "error"); }
     finally { e.target.value = ""; }
@@ -3253,6 +3511,7 @@ function wireGlobalEvents() {
       APP.view = "doc_lain_masukan";
       APP.dlmSubView = "upload_mapping";
       applyState(data.state);
+      invalidateQueries(["archives"]);
       toast(`File "${file.name}" dimuat — ${data.state.dlm.raw_row_count} baris.`, "success");
     } catch (err) { toast(err.message, "error"); }
     finally { e.target.value = ""; }
