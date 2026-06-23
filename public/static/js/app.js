@@ -369,6 +369,12 @@ function onNavClick(id) {
 function statPill(label, value) {
   return `<div class="stat-pill"><div class="stat-value">${value}</div><div class="stat-label">${escapeHtml(label)}</div></div>`;
 }
+function processedInvoiceCountFromState(st) {
+  const fakturRows = (st && st.faktur_rows) || [];
+  const processed = (st && st.processed) || [];
+  const uniqueProcessed = new Set(processed.map((row) => row.faktur).filter(Boolean)).size;
+  return Math.max(fakturRows.length, uniqueProcessed);
+}
 function trialStatPill(used) {
   const sub = (APP.state && APP.state.subscription) || { limit: 10 };
   if (sub.status === "active") {
@@ -394,8 +400,8 @@ function refreshTopbar() {
       : sub.status === "expired"
         ? `${icon("lock", "status-icon")} Masa berlangganan sudah habis`
         : `${icon("layoutDashboard", "status-icon")} Dashboard trial`;
-    const used = sub.used || Math.max(
-      (st.faktur_rows || []).length,
+    const used = Math.max(
+      processedInvoiceCountFromState(st),
       ((st.dlm || {}).processed || []).length,
       ((st.sdl || {}).processed || []).length,
     );
@@ -819,6 +825,7 @@ function renderDataTable(target, options) {
 function applyState(newState) {
   if (newState) newState.subscription = mergedSubscription(newState.subscription);
   APP.state = newState;
+  invalidateQueries(["dashboard"]);
   render();
 }
 function renderSubscriptionExpired(body) {
@@ -957,12 +964,18 @@ function dashboardInsights(data) {
   const authAccess = authSub.access || {};
   const items = data.items || [];
   const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-  const invoicesThisMonth = items.filter((it) => monthKeyFromDateText(it.tgl_faktur || it.exported_at) === currentMonth).length;
+  const workspaceMonthInvoices = (st.faktur_rows || []).filter((row) => monthKeyFromDateText(row.tgl_faktur) === currentMonth).length;
+  const processedMonthInvoices = new Set((st.processed || [])
+    .filter((row) => monthKeyFromDateText(row.tgl) === currentMonth)
+    .map((row) => row.faktur)
+    .filter(Boolean)).size;
+  const historyMonthInvoices = items.filter((it) => monthKeyFromDateText(it.tgl_faktur || it.exported_at) === currentMonth).length;
+  const invoicesThisMonth = Math.max(workspaceMonthInvoices, processedMonthInvoices, historyMonthInvoices);
   const expiresAt = sub.expiresAt || authSub.expiresAt || authAccess.expiresAt;
   const remainingDays = daysUntil(expiresAt);
   const planName = sub.plan || authSub.plan || "Trial";
   const status = sub.status || authSub.status || "trial";
-  const processedInvoices = (st.faktur_rows || []).length;
+  const processedInvoices = Math.max(Number(data.processedInvoices || 0), processedInvoiceCountFromState(st));
   const dlmDocs = ((st.dlm || {}).processed || []).length;
   const sdlDocs = ((st.sdl || {}).processed || []).length;
   const limit = sub.limit || 10;
