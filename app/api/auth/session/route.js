@@ -17,14 +17,29 @@ export async function GET() {
     const userId = toObjectId(session?.userId);
 
     if (!userId) {
-      return NextResponse.json({ user: null, subscription: null }, { status: 401 });
+      return NextResponse.json({ user: null, subscription: null });
     }
 
     const db = await getDb();
     await ensureIndexes(db);
     const user = await db.collection("users").findOne({ _id: userId });
     if (!user) {
-      return NextResponse.json({ user: null, subscription: null }, { status: 401 });
+      const res = NextResponse.json({ user: null, subscription: null });
+      res.cookies.set("taxbuddy_session", "", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 0,
+      });
+      res.cookies.set("taxbuddy_entitlement", "", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 0,
+      });
+      return res;
     }
 
     let subscription = await db.collection("subscriptions").findOne(
