@@ -46,6 +46,11 @@ export default function WorkspacePage() {
       <div id="ctx-menu-root" />
       <input type="file" id="fileInput" accept=".xls,.xlsx" style={{ display: "none" }} />
       <input type="file" id="fileInputDlm" accept=".xls,.xlsx" style={{ display: "none" }} />
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "window.process=window.process||{env:{}};window.process.env=window.process.env||{};window.process.env.NODE_ENV=window.process.env.NODE_ENV||'production';",
+        }}
+      />
       <Script src="/static/js/app.js" strategy="afterInteractive" />
     </>
   );

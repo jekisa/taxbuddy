@@ -24,6 +24,13 @@ const APP = {
   auth: null,
 };
 
+function ensureBrowserProcessEnv() {
+  if (typeof globalThis === "undefined") return;
+  globalThis.process = globalThis.process || { env: {} };
+  globalThis.process.env = globalThis.process.env || {};
+  globalThis.process.env.NODE_ENV = globalThis.process.env.NODE_ENV || "production";
+}
+
 class ApiError extends Error {
   constructor(msg, data) { super(msg); this.data = data; }
 }
@@ -68,11 +75,12 @@ async function loadAuthSession() {
 }
 async function loadTanStack() {
   try {
+    ensureBrowserProcessEnv();
     const [tableCore, queryCore] = await Promise.all([
       import("/static/vendor/tanstack-table/index.esm.js"),
       import("/static/vendor/tanstack-query/index.js"),
     ]);
-    APP.tableCore = tableCore;
+    APP.tableCore = null;
     APP.queryCore = queryCore;
     APP.queryClient = new queryCore.QueryClient({
       defaultOptions: { queries: { staleTime: 15000, gcTime: 5 * 60 * 1000 } },
@@ -610,7 +618,7 @@ function renderDataTable(target, options) {
   } = options;
   const state = getTableState(id, pageSize);
   const data = rows || [];
-  const core = APP.tableCore;
+  const core = null;
   const tanColumns = columns.map(tanColumn);
   let table = null;
   let pageRows = [];
@@ -618,23 +626,31 @@ function renderDataTable(target, options) {
   let filteredRows = data;
 
   if (core) {
-    table = core.createTable({
-      data,
-      columns: tanColumns,
-      state,
-      globalFilterFn: "includesString",
-      onSortingChange: (updater) => { state.sorting = core.functionalUpdate(updater, state.sorting); },
-      onGlobalFilterChange: (updater) => { state.globalFilter = core.functionalUpdate(updater, state.globalFilter); state.pagination.pageIndex = 0; },
-      onPaginationChange: (updater) => { state.pagination = core.functionalUpdate(updater, state.pagination); },
-      getCoreRowModel: core.getCoreRowModel(),
-      getFilteredRowModel: core.getFilteredRowModel(),
-      getSortedRowModel: core.getSortedRowModel(),
-      getPaginationRowModel: core.getPaginationRowModel(),
-    });
-    totalRows = table.getFilteredRowModel().rows.length;
-    normalizePageState(state, table.getPageCount());
-    pageRows = table.getPaginationRowModel().rows;
-  } else {
+    try {
+      table = core.createTable({
+        data,
+        columns: tanColumns,
+        state,
+        globalFilterFn: "includesString",
+        onSortingChange: (updater) => { state.sorting = core.functionalUpdate(updater, state.sorting); },
+        onGlobalFilterChange: (updater) => { state.globalFilter = core.functionalUpdate(updater, state.globalFilter); state.pagination.pageIndex = 0; },
+        onPaginationChange: (updater) => { state.pagination = core.functionalUpdate(updater, state.pagination); },
+        getCoreRowModel: core.getCoreRowModel(),
+        getFilteredRowModel: core.getFilteredRowModel(),
+        getSortedRowModel: core.getSortedRowModel(),
+        getPaginationRowModel: core.getPaginationRowModel(),
+      });
+      totalRows = table.getFilteredRowModel().rows.length;
+      normalizePageState(state, table.getPageCount());
+      pageRows = table.getPaginationRowModel().rows;
+    } catch (err) {
+      console.warn("TanStack table render failed, using local table fallback.", err);
+      APP.tableCore = null;
+      table = null;
+    }
+  }
+
+  if (!table) {
     const q = state.globalFilter.trim().toLowerCase();
     filteredRows = q ? data.filter((row) => columns.some((col) => String(tableCellValue(row, col) ?? "").toLowerCase().includes(q))) : data.slice();
     const sort = state.sorting[0];
@@ -1532,8 +1548,8 @@ function wireMappingButtons() {
   btnProcess.addEventListener("click", async () => {
     try {
       const data = await apiPost("/api/process");
-      applyState(data.state);
       APP.subView = "tpk";
+      applyState(data.state);
       render();
       toast("Data berhasil diproses.", "success");
     } catch (err) { toast(err.message, "error"); }
@@ -1735,8 +1751,8 @@ function wireDlmMappingButtons() {
   btnProcess.addEventListener("click", async () => {
     try {
       const data = await apiPost("/api/dlm/process");
-      applyState(data.state);
       APP.dlmSubView = "tabel";
+      applyState(data.state);
       render();
       toast("Data berhasil diproses.", "success");
     } catch (err) { toast(err.message, "error"); }

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { isProduction } from "../../../../lib/env";
 import {
   ensureIndexes,
   getDb,
@@ -28,14 +29,14 @@ export async function GET() {
       res.cookies.set("taxbuddy_session", "", {
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction(),
         path: "/",
         maxAge: 0,
       });
       res.cookies.set("taxbuddy_entitlement", "", {
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction(),
         path: "/",
         maxAge: 0,
       });
@@ -70,14 +71,14 @@ export async function DELETE() {
   res.cookies.set("taxbuddy_session", "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isProduction(),
     path: "/",
     maxAge: 0,
   });
   res.cookies.set("taxbuddy_entitlement", "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isProduction(),
     path: "/",
     maxAge: 0,
   });
