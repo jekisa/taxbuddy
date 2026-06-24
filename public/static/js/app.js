@@ -157,8 +157,10 @@ function fmtPct(val) {
 /* ==================== ICONS ==================== */
 const ICONS = {
   activity: '<path d="M22 12h-4l-3 7-6-14-3 7H2"/>',
+  alertCircle: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
   archive: '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
   arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  bell: '<path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>',
   bookOpen: '<path d="M12 7v14"/><path d="M3 5a7 7 0 0 1 9 2 7 7 0 0 1 9-2v16a7 7 0 0 0-9 2 7 7 0 0 0-9-2z"/>',
   boxes: '<path d="m7.5 4.3 4.5 2.6 4.5-2.6"/><path d="M12 6.9v5.2"/><path d="m3 8 4.5 2.6L12 8l4.5 2.6L21 8"/><path d="M3 8v8l4.5 2.6L12 16l4.5 2.6L21 16V8"/>',
   calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><path d="M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/>',
@@ -167,12 +169,17 @@ const ICONS = {
   chevronLeft: '<path d="m15 18-6-6 6-6"/>',
   chevronRight: '<path d="m9 18 6-6-6-6"/>',
   chevronsRight: '<path d="m13 17 5-5-5-5"/><path d="m6 17 5-5-5-5"/>',
+  circle: '<circle cx="12" cy="12" r="10"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+  filter: '<path d="M22 3H2l8 9.5V19l4 2v-8.5z"/>',
   fileDown: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/>',
   fileSpreadsheet: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h8"/><path d="M10 9v10"/><path d="M14 9v10"/>',
   folderOpen: '<path d="M6 14 4.6 20A2 2 0 0 0 6.5 22h11a2 2 0 0 0 1.9-1.5L21 12H7.5A2 2 0 0 0 6 14z"/><path d="M3 18V6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v3"/>',
   hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="m16 3-2 18"/>',
+  lineChart: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
   layoutDashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   logIn: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
@@ -186,6 +193,7 @@ const ICONS = {
   save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   settings: '<path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  sparkles: '<path d="m12 3-1.9 5.8L4 11l6.1 2.2L12 19l1.9-5.8L20 11l-6.1-2.2z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/>',
   tag: '<path d="M12.6 2.6H21v8.4L10.4 21.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8z"/><circle cx="17" cy="7" r="1"/>',
   trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8 12 3 7 8"/><path d="M12 3v12"/>',
@@ -251,11 +259,13 @@ function toast(msg, kind = "info") {
 
 /* ==================== NAV / TOPBAR ==================== */
 const NAV_ITEMS = [
+  { section: "Dashboard" },
   { id: "dashboard", label: "Dashboard", icon: "layoutDashboard" },
+  { section: "Proses" },
   { id: "pajak_keluaran", label: "Pajak Keluaran", icon: "receipt" },
   { id: "doc_lain_masukan", label: "Doc Lain Masukan", icon: "fileDown" },
   { id: "spt_dokumen_lain", label: "SPT Dokumen Lain", icon: "bookOpen" },
-  { divider: true },
+  { section: "Data" },
   { id: "database", label: "Database", icon: "database" },
   { id: "archive", label: "Arsip Dokumen", icon: "archive" },
 ];
@@ -297,6 +307,13 @@ function buildNav() {
   nav.innerHTML = "";
   const locked = new Set(((APP.state && APP.state.subscription) || {}).locked_features || []);
   NAV_ITEMS.forEach((item) => {
+    if (item.section) {
+      const section = document.createElement("div");
+      section.className = "nav-section-label";
+      section.textContent = item.section;
+      nav.appendChild(section);
+      return;
+    }
     if (item.divider) {
       const d = document.createElement("div");
       d.className = "nav-divider";
@@ -341,6 +358,24 @@ function refreshAccountSection() {
   }
   const btn = document.getElementById("btnLogout");
   if (btn) btn.addEventListener("click", logoutUser);
+}
+function initialsFromName(name) {
+  const parts = String(name || "TaxBuddy").trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "TB";
+}
+function refreshProfileMenu() {
+  const trigger = document.getElementById("profileTrigger");
+  if (!trigger) return;
+  const user = currentUser();
+  const sub = (APP.state && APP.state.subscription) || {};
+  const displayName = user ? (user.name || user.email || "User") : "Trial Workspace";
+  const email = user ? (user.email || "") : "Belum login";
+  const plan = sub.plan || (((APP.auth || {}).subscription || {}).plan) || "Trial";
+  document.getElementById("profileAvatar").textContent = initialsFromName(displayName);
+  document.getElementById("profileName").textContent = displayName;
+  document.getElementById("profilePlan").textContent = plan;
+  document.getElementById("profileDropdownName").textContent = displayName;
+  document.getElementById("profileDropdownEmail").textContent = email || plan;
 }
 function onNavClick(id) {
   const locked = new Set(((APP.state && APP.state.subscription) || {}).locked_features || []);
@@ -684,7 +719,31 @@ function normalizePageState(state, totalPages) {
 }
 function renderCellContent(value, html) {
   if (html) return String(value ?? "");
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["berhasil", "pending", "error"].includes(normalized)) {
+    const tone = normalized === "berhasil" ? "success" : normalized === "pending" ? "pending" : "danger";
+    return `<span class="status-badge ${tone}">${escapeHtml(value)}</span>`;
+  }
   return escapeHtml(value ?? "");
+}
+function exportRowsToCsv(filename, columns, rows) {
+  const csvEscape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const lines = [
+    columns.map((col) => csvEscape(col.header)).join(","),
+    ...rows.map((row) => columns.map((col) => {
+      const raw = tableCellValue(row, col);
+      return csvEscape(String(raw ?? "").replace(/<[^>]*>/g, ""));
+    }).join(",")),
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 function renderDataTable(target, options) {
   const {
@@ -767,7 +826,11 @@ function renderDataTable(target, options) {
     <div class="table-shell">
       <div class="table-toolbar">
         <div class="table-search"><span>${icon("search")}</span><input class="x-input table-filter" value="${escapeHtml(state.globalFilter)}" placeholder="${escapeHtml(searchPlaceholder)}"></div>
-        <div class="table-meta">${start}-${end} dari ${totalRows}</div>
+        <div class="table-tools">
+          <button class="pill pill-ghost pill-sm" data-table-tool="filter">${icon("filter")} Filter</button>
+          <button class="pill pill-ghost pill-sm" data-table-tool="export">${icon("download")} Export</button>
+          <div class="table-meta">${start}-${end} dari ${totalRows}</div>
+        </div>
       </div>
       <div class="table-scroll">
         ${totalRows ? `<table class="dtable">${colgroup}<thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>` : emptyHint(empty)}
@@ -813,6 +876,14 @@ function renderDataTable(target, options) {
       renderDataTable(target, options);
     });
   });
+  const exportBtn = target.querySelector('[data-table-tool="export"]');
+  if (exportBtn) exportBtn.addEventListener("click", () => {
+    const sourceRows = filteredRows && filteredRows.length ? filteredRows : data;
+    exportRowsToCsv(`${id || "table"}-export.csv`, columns, sourceRows);
+    toast("Data tabel diexport ke CSV.", "success");
+  });
+  const filterBtn = target.querySelector('[data-table-tool="filter"]');
+  if (filterBtn) filterBtn.addEventListener("click", () => filter.focus());
   target.querySelectorAll("tbody tr").forEach((tr) => {
     const idx = parseInt(tr.dataset.idx, 10);
     const original = data.find((r) => Number(r.__idx) === idx) || data[idx];
@@ -847,6 +918,7 @@ function render() {
   refreshFileLabel();
   refreshExportSection();
   refreshAccountSection();
+  refreshProfileMenu();
   const body = document.getElementById("body");
   body.innerHTML = "";
   if (isSubscriptionExpired()) {
@@ -948,12 +1020,37 @@ function formatDateId(value) {
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
-function dashboardMetric(iconName, label, value, note = "") {
+function dashboardBadge(label, tone = "neutral") {
+  return `<span class="status-badge ${tone}">${escapeHtml(label)}</span>`;
+}
+function dashboardKpiCard({ iconName, label, value, note = "", badge = "Aktif", tone = "success" }) {
   return `
-    <div class="dash-card">
-      <div class="dash-card-head">${icon(iconName)}<span>${escapeHtml(label)}</span></div>
+    <div class="dash-card premium-card">
+      <div class="dash-card-top">
+        <div class="dash-icon">${icon(iconName)}</div>
+        ${dashboardBadge(badge, tone)}
+      </div>
+      <div class="dash-card-head"><span>${escapeHtml(label)}</span></div>
       <div class="dash-card-value">${escapeHtml(value)}</div>
       ${note ? `<div class="dash-card-label">${escapeHtml(note)}</div>` : ""}
+    </div>
+  `;
+}
+function usageKpiCard(insights) {
+  const pct = Math.max(0, Math.min(100, insights.usagePercent || 0));
+  return `
+    <div class="dash-card premium-card usage-card">
+      <div class="dash-card-top">
+        <div class="dash-icon">${icon("activity")}</div>
+        ${dashboardBadge("Kuota", insights.status === "expired" ? "danger" : "success")}
+      </div>
+      <div class="dash-card-head"><span>Invoice Usage</span></div>
+      <div class="usage-count">${escapeHtml(insights.usageLabel)}</div>
+      <div class="usage-bar" aria-label="${pct.toFixed(2)}% digunakan"><span style="width:${pct}%"></span></div>
+      <div class="usage-meta">
+        <span>${pct.toFixed(2)}% digunakan</span>
+        <strong>Sisa ${escapeHtml(insights.remainingQuotaLabel)} invoice</strong>
+      </div>
     </div>
   `;
 }
@@ -979,7 +1076,12 @@ function dashboardInsights(data) {
   const dlmDocs = ((st.dlm || {}).processed || []).length;
   const sdlDocs = ((st.sdl || {}).processed || []).length;
   const limit = sub.limit || 10;
-  const quotaLabel = status === "active" && !limit ? "Unlimited" : `${processedInvoices}/${limit}`;
+  const unlimited = status === "active" && !limit;
+  const quotaLabel = unlimited ? "Unlimited" : `${processedInvoices}/${limit}`;
+  const usagePercent = unlimited || !limit ? 0 : (processedInvoices / limit) * 100;
+  const remainingQuota = unlimited ? "Unlimited" : Math.max(0, limit - processedInvoices);
+  const errorCount = ((st.date_diagnostics || {}).blockers || []).length;
+  const pendingCount = Math.max(0, ((st.raw_row_count || 0) + (((st.dlm || {}).raw_row_count) || 0)) - processedInvoices - dlmDocs);
   return {
     planName,
     status,
@@ -988,10 +1090,107 @@ function dashboardInsights(data) {
     dlmDocs,
     sdlDocs,
     quotaLabel,
+    usageLabel: unlimited ? "Unlimited" : `${processedInvoices} / ${limit.toLocaleString("id-ID")}`,
+    usagePercent,
+    remainingQuotaLabel: unlimited ? "Unlimited" : remainingQuota.toLocaleString("id-ID"),
     remainingDays,
     expiresAt,
     exportedTotal: data.total || 0,
+    successCount: Math.max(processedInvoices, Number(data.total || 0)),
+    pendingCount,
+    errorCount,
   };
+}
+function dateFromDashboardItem(item) {
+  const raw = item.exported_at || item.tgl_faktur || "";
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+  const monthKey = monthKeyFromDateText(raw);
+  if (monthKey) return new Date(`${monthKey}-01T00:00:00`);
+  return null;
+}
+function buildTrendSeries(items, days) {
+  const today = new Date();
+  const buckets = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    buckets.push({ key, label: d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" }), value: 0 });
+  }
+  const bucketMap = new Map(buckets.map((b) => [b.key, b]));
+  items.forEach((item) => {
+    const d = dateFromDashboardItem(item);
+    if (!d) return;
+    const key = d.toISOString().slice(0, 10);
+    if (bucketMap.has(key)) bucketMap.get(key).value += 1;
+  });
+  return buckets;
+}
+function areaChartSvg(series) {
+  const width = 760;
+  const height = 220;
+  const pad = 22;
+  const max = Math.max(1, ...series.map((p) => p.value));
+  const points = series.map((p, i) => {
+    const x = pad + (i * (width - pad * 2)) / Math.max(1, series.length - 1);
+    const y = height - pad - (p.value / max) * (height - pad * 2);
+    return { x, y, value: p.value };
+  });
+  const line = points.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+  const area = `${line} L${width - pad} ${height - pad} L${pad} ${height - pad} Z`;
+  return `
+    <svg class="area-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Tren invoice diproses">
+      <defs>
+        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity=".32"/>
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path class="chart-grid" d="M${pad} ${height - pad}H${width - pad}M${pad} ${height / 2}H${width - pad}M${pad} ${pad}H${width - pad}"/>
+      <path class="chart-area" d="${area}"/>
+      <path class="chart-line" d="${line}"/>
+      ${points.map((p) => `<circle class="chart-dot" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3"><title>${p.value} invoice</title></circle>`).join("")}
+    </svg>
+  `;
+}
+function donutChartSvg(success, pending, error) {
+  const total = Math.max(1, success + pending + error);
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  const successLen = (success / total) * c;
+  const pendingLen = (pending / total) * c;
+  const errorLen = (error / total) * c;
+  return `
+    <svg class="donut-chart" viewBox="0 0 120 120" role="img" aria-label="Status pemrosesan">
+      <circle class="donut-track" cx="60" cy="60" r="${r}"></circle>
+      <circle class="donut-seg success" cx="60" cy="60" r="${r}" stroke-dasharray="${successLen} ${c - successLen}" stroke-dashoffset="0"></circle>
+      <circle class="donut-seg pending" cx="60" cy="60" r="${r}" stroke-dasharray="${pendingLen} ${c - pendingLen}" stroke-dashoffset="${-successLen}"></circle>
+      <circle class="donut-seg danger" cx="60" cy="60" r="${r}" stroke-dasharray="${errorLen} ${c - errorLen}" stroke-dashoffset="${-(successLen + pendingLen)}"></circle>
+      <text x="60" y="57" text-anchor="middle" class="donut-total">${success + pending + error}</text>
+      <text x="60" y="74" text-anchor="middle" class="donut-label">total</text>
+    </svg>
+  `;
+}
+function dashboardInsightList(insights) {
+  return [
+    `${insights.successCount.toLocaleString("id-ID")} invoice berhasil diproses hari ini`,
+    insights.errorCount ? `${insights.errorCount} issue perlu dicek sebelum export` : "Tidak ditemukan NPWP invalid",
+    `PPN bulan ini ${insights.invoicesThisMonth ? "naik" : "siap dipantau"} dari aktivitas workspace`,
+    `Sisa kuota invoice ${insights.remainingQuotaLabel}`,
+  ];
+}
+function activityFeedItems(items) {
+  const rows = (items || []).slice(0, 5).map((item, i) => ({
+    title: `Export XML ${item.no_faktur || "berhasil"}`,
+    meta: item.exported_at ? formatDateId(item.exported_at) : `${(i + 1) * 2} menit lalu`,
+  }));
+  if (rows.length) return rows;
+  return [
+    { title: "Workspace siap digunakan", meta: "Baru saja" },
+    { title: "Upload file invoice untuk mulai proses", meta: "Menunggu data" },
+    { title: "Export XML akan muncul di riwayat", meta: "Otomatis" },
+  ];
 }
 function renderDashboardData(wrap, data) {
   const items = data.items || [];
@@ -1002,15 +1201,57 @@ function renderDashboardData(wrap, data) {
   const expiryNote = insights.status === "active"
     ? `Aktif sampai ${formatDateId(insights.expiresAt)}`
     : insights.status === "expired" ? "Perpanjang package untuk membuka akses" : "Upgrade untuk membuka semua menu";
+  const user = currentUser();
+  const displayName = user ? (user.name || user.email || "User") : "Trial Workspace";
+  const trend7 = buildTrendSeries(items, 7);
+  const trend30 = buildTrendSeries(items, 30);
+  const trend90 = buildTrendSeries(items, 90);
   wrap.querySelector("#dashCards").innerHTML = `
-    ${dashboardMetric("package", "Paket Langganan", insights.planName, insights.status)}
-    ${dashboardMetric("calendar", "Sisa Waktu", remainingLabel, expiryNote)}
-    ${dashboardMetric("receipt", "Invoice Bulan Ini", String(insights.invoicesThisMonth), "Berdasarkan tanggal faktur/export")}
-    ${dashboardMetric("fileSpreadsheet", "Invoice Diproses", insights.quotaLabel, "Data aktif di workspace")}
-    ${dashboardMetric("fileDown", "Doc Lain Masukan", String(insights.dlmDocs), "Dokumen yang sudah diproses")}
-    ${dashboardMetric("bookOpen", "SPT Dokumen Lain", String(insights.sdlDocs), "Dokumen manual tersimpan di sesi")}
-    ${dashboardMetric("archive", "Total Export XML", String(insights.exportedTotal), "Riwayat No. Faktur Coretax")}
+    ${dashboardKpiCard({ iconName: "package", label: "Paket Enterprise", value: insights.planName, note: expiryNote, badge: insights.status, tone: insights.status === "expired" ? "danger" : "success" })}
+    ${usageKpiCard(insights)}
+    ${dashboardKpiCard({ iconName: "receipt", label: "Invoice Bulan Ini", value: String(insights.invoicesThisMonth), note: "Berdasarkan tanggal faktur/export", badge: "Bulan ini" })}
+    ${dashboardKpiCard({ iconName: "fileSpreadsheet", label: "Invoice Diproses", value: insights.quotaLabel, note: "Data aktif di workspace", badge: "Aktif" })}
+    ${dashboardKpiCard({ iconName: "fileDown", label: "Doc Lain Masukan", value: String(insights.dlmDocs), note: "Dokumen yang sudah diproses", badge: "DLM" })}
+    ${dashboardKpiCard({ iconName: "bookOpen", label: "SPT Dokumen Lain", value: String(insights.sdlDocs), note: "Dokumen manual tersimpan di sesi", badge: "SPT" })}
+    ${dashboardKpiCard({ iconName: "archive", label: "Total Export XML", value: String(insights.exportedTotal), note: "Riwayat No. Faktur Coretax", badge: "XML" })}
   `;
+  wrap.querySelector("#dashWelcome").innerHTML = `
+    <div>
+      <span class="eyebrow">Workspace Pajak Keluaran</span>
+      <h1>Selamat Datang, ${escapeHtml(displayName)}</h1>
+      <p>Status langganan ${escapeHtml(insights.status)} dengan paket ${escapeHtml(insights.planName)}. ${escapeHtml(remainingLabel)} tersisa untuk periode aktif.</p>
+    </div>
+    <div class="welcome-status">
+      ${dashboardBadge(insights.status === "active" ? "Langganan aktif" : insights.status === "expired" ? "Expired" : "Trial", insights.status === "expired" ? "danger" : "success")}
+      <strong>${escapeHtml(insights.planName)}</strong>
+      <span>${escapeHtml(expiryNote)}</span>
+    </div>
+  `;
+  wrap.querySelector("#invoiceTrendChart").innerHTML = areaChartSvg(trend7);
+  wrap.querySelector("#statusDonut").innerHTML = donutChartSvg(insights.successCount, insights.pendingCount, insights.errorCount);
+  wrap.querySelector("#statusLegend").innerHTML = [
+    ["Berhasil", insights.successCount, "success"],
+    ["Pending", insights.pendingCount, "pending"],
+    ["Error", insights.errorCount, "danger"],
+  ].map(([label, value, tone]) => {
+    const total = Math.max(1, insights.successCount + insights.pendingCount + insights.errorCount);
+    const pct = (Number(value) / total) * 100;
+    return `<div><span class="legend-dot ${tone}"></span><strong>${value}</strong><em>${label} (${pct.toFixed(0)}%)</em></div>`;
+  }).join("");
+  wrap.querySelector("#aiInsightList").innerHTML = dashboardInsightList(insights).map((text) => `<li>${icon("check")}<span>${escapeHtml(text)}</span></li>`).join("");
+  wrap.querySelector("#activityFeed").innerHTML = activityFeedItems(items).map((item) => `
+    <div class="activity-item">
+      <span class="activity-dot">${icon("check")}</span>
+      <div><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.meta)}</small></div>
+    </div>
+  `).join("");
+  wrap.querySelectorAll("[data-trend]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      wrap.querySelectorAll("[data-trend]").forEach((b) => b.classList.toggle("active", b === btn));
+      const days = Number(btn.dataset.trend);
+      wrap.querySelector("#invoiceTrendChart").innerHTML = areaChartSvg(days === 7 ? trend7 : days === 90 ? trend90 : trend30);
+    });
+  });
   const tableEl = wrap.querySelector("#dashTableScroll");
   if (!items.length) {
     tableEl.innerHTML = emptyHint("Belum ada faktur yang di-export ke XML Coretax.");
@@ -1046,16 +1287,45 @@ function renderDashboardView(body) {
   const wrap = document.createElement("div");
   wrap.className = "view-dashboard";
   wrap.innerHTML = `
-    <div class="subhdr">
-      <span class="tt">Dashboard</span>
-      <span class="spacer"></span>
+    <div class="dashboard-welcome premium-card" id="dashWelcome"></div>
+    <div class="dashboard-actions">
+      <span class="tt">${icon("layoutDashboard")} Dashboard Overview</span>
       <div class="btn-row">
         <button class="pill pill-ghost pill-sm" id="btnRefreshDashboard">${icon("refresh")} Refresh</button>
         <button class="pill pill-danger pill-sm" id="btnClearHistory">${icon("trash")} Hapus Riwayat</button>
       </div>
     </div>
     <div class="dash-cards" id="dashCards"></div>
-    <div class="dash-table-wrap"><div class="table-scroll" id="dashTableScroll"></div></div>
+    <div class="dashboard-grid">
+      <section class="analytics-card premium-card">
+        <div class="section-head">
+          <div>${icon("lineChart")}<strong>Tren Invoice Diproses</strong></div>
+          <div class="segmented-control">
+            <button class="active" data-trend="7">7 hari</button>
+            <button data-trend="30">30 hari</button>
+            <button data-trend="90">90 hari</button>
+          </div>
+        </div>
+        <div id="invoiceTrendChart"></div>
+      </section>
+      <section class="status-card premium-card">
+        <div class="section-head"><div>${icon("circle")}<strong>Status Pemrosesan</strong></div></div>
+        <div id="statusDonut"></div>
+        <div class="status-legend" id="statusLegend"></div>
+      </section>
+      <section class="insight-card premium-card">
+        <div class="section-head"><div>${icon("sparkles")}<strong>Insight Hari Ini</strong></div></div>
+        <ul id="aiInsightList"></ul>
+      </section>
+      <section class="activity-card premium-card">
+        <div class="section-head"><div>${icon("clock")}<strong>Aktivitas Terbaru</strong></div></div>
+        <div class="activity-feed" id="activityFeed"></div>
+      </section>
+    </div>
+    <section class="dash-table-wrap premium-card">
+      <div class="section-head"><div>${icon("archive")}<strong>Riwayat Export XML</strong></div></div>
+      <div class="table-scroll" id="dashTableScroll"></div>
+    </section>
   `;
   body.appendChild(wrap);
   loadDashboardData(wrap);
@@ -1151,9 +1421,9 @@ function renderArchiveRows(wrap, data) {
     exportActions: archiveExportButtons(item),
   }));
   wrap.querySelector("#archiveCards").innerHTML = `
-    ${dashboardMetric("archive", "Total Arsip", String(data.total || 0), "File upload tersimpan")}
-    ${dashboardMetric("fileSpreadsheet", "Total Excel", String(rows.filter((row) => row.sourceName && row.sourceName !== "-").length), "Bisa diunduh ulang")}
-    ${dashboardMetric("fileDown", "Total Export", String(rows.reduce((sum, row) => sum + ((row.exports || []).length), 0)), "XLSX/XML tersimpan")}
+    ${dashboardKpiCard({ iconName: "archive", label: "Total Arsip", value: String(data.total || 0), note: "File upload tersimpan", badge: "Arsip" })}
+    ${dashboardKpiCard({ iconName: "fileSpreadsheet", label: "Total Excel", value: String(rows.filter((row) => row.sourceName && row.sourceName !== "-").length), note: "Bisa diunduh ulang", badge: "Excel" })}
+    ${dashboardKpiCard({ iconName: "fileDown", label: "Total Export", value: String(rows.reduce((sum, row) => sum + ((row.exports || []).length), 0)), note: "XLSX/XML tersimpan", badge: "Export" })}
   `;
   const tableEl = wrap.querySelector("#archiveTableScroll");
   if (!rows.length) {
@@ -1711,6 +1981,12 @@ function renderMappingProgress() {
   const cls = done === fields.length ? "done" : (done > 0 ? "partial" : "");
   el.innerHTML = `<div class="pt"><span class="count ${cls}">${done}</span><span class="lbl2">/ ${fields.length} field terisi</span></div>`;
 }
+function columnHasPreviewData(rows, idx) {
+  return (rows || []).some((row) => String(row?.[idx] ?? "").trim() !== "");
+}
+function isGeneratedColumnHeader(header, idx) {
+  return String(header || "").trim().toLowerCase() === `kolom ${idx + 1}`;
+}
 function renderMappingTable() {
   const st = APP.state;
   const headers = st.raw_headers;
@@ -1720,7 +1996,7 @@ function renderMappingTable() {
 
   const visibleIdx = headers
     .map((h, idx) => idx)
-    .filter((idx) => headers[idx].trim() !== "" || reverseMap[idx] !== undefined);
+    .filter((idx) => reverseMap[idx] !== undefined || columnHasPreviewData(rows, idx) || !isGeneratedColumnHeader(headers[idx], idx));
 
   let html = '<table class="dtable">';
   html += colgroupHtml(visibleIdx.map(() => ["", 150]));
@@ -1923,7 +2199,7 @@ function renderDlmMappingTable() {
 
   const visibleIdx = headers
     .map((h, idx) => idx)
-    .filter((idx) => headers[idx].trim() !== "" || reverseMap[idx] !== undefined);
+    .filter((idx) => reverseMap[idx] !== undefined || columnHasPreviewData(rows, idx) || !isGeneratedColumnHeader(headers[idx], idx));
 
   let html = '<table class="dtable">';
   html += colgroupHtml(visibleIdx.map(() => ["", 150]));
@@ -2496,13 +2772,63 @@ function renderDateAlertHtml() {
     </div>
   `;
 }
+function normalizeColumnLabel(label) {
+  return String(label || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+function fakturKeyForHeader(header, fallbackKey) {
+  const label = normalizeColumnLabel(header);
+  const map = {
+    baris: "baris",
+    tglfaktur: "tgl_faktur",
+    jenisfaktur: "jenis_faktur",
+    kodetransaksi: "kode_transaksi",
+    kettambahan: "ket_tambahan",
+    dokpendukung: "dok_pendukung",
+    referensi: "referensi",
+    nofaktur: "referensi",
+    capfasilitas: "cap_fasilitas",
+    idtkupenjual: "id_tku_penjual",
+    npwpnikpembeli: "npwp_pembeli",
+    npwppembeli: "npwp_pembeli",
+    jenisid: "jenis_id",
+    negara: "negara",
+    nodokpembeli: "no_dok_pembeli",
+    namapembeli: "nama_pembeli",
+    alamatpembeli: "alamat_pembeli",
+    emailpembeli: "email_pembeli",
+    idtkupembeli: "id_tku_pembeli",
+  };
+  return map[label] || fallbackKey;
+}
+function detailKeyForHeader(header, fallbackKey) {
+  const label = normalizeColumnLabel(header);
+  const map = {
+    baris: "baris",
+    brgjasa: "detail_opt_label",
+    barangjasa: "detail_opt_label",
+    kode: "detail_code",
+    namabarangjasa: "keterangan",
+    satuan: "detail_unit_label",
+    hargasatuan: "harga",
+    jumlah: "qty",
+    totaldiskon: "diskon",
+    diskon: "diskon",
+    dpp: "dpp",
+    dppnilailain: "dpp_nl",
+    tarifppn: "tarif_ppn",
+    ppn: "ppn",
+    tarifppnbm: "tarif_ppnbm",
+    ppnbm: "ppnbm",
+  };
+  return map[label] || fallbackKey;
+}
 function renderFakturTable() {
   const st = APP.state;
   const cols = APP.bootstrap.faktur_cols;
-  const keys = ["baris", "tgl_faktur", "jenis_faktur", "kode_transaksi", "ket_tambahan", "dok_pendukung", "referensi", "cap_fasilitas", "id_tku_penjual", "npwp_pembeli", "jenis_id", "negara", "no_dok_pembeli", "nama_pembeli", "alamat_pembeli", "email_pembeli", "id_tku_pembeli"];
+  const fallbackKeys = ["baris", "tgl_faktur", "jenis_faktur", "kode_transaksi", "ket_tambahan", "dok_pendukung", "referensi", "cap_fasilitas", "id_tku_penjual", "npwp_pembeli", "jenis_id", "negara", "no_dok_pembeli", "nama_pembeli", "alamat_pembeli", "email_pembeli", "id_tku_pembeli"];
   renderDataTable(document.getElementById("fakturTableScroll"), {
     id: "faktur",
-    rows: st.faktur_rows.map((r, i) => ({ ...r, __idx: i })),
+    rows: st.faktur_rows.map((r, i) => ({ ...r, baris: i + 1, __idx: i })),
     pageSize: 25,
     searchPlaceholder: "Cari faktur, pembeli, NPWP, atau referensi...",
     getRowClass: (r, idx) => fakturRowClass(r, idx, APP.selFaktur.has(idx)),
@@ -2516,21 +2842,21 @@ function renderFakturTable() {
     },
     onRowDblClick: (r, idx) => openFakturFillDialog(idx),
     columns: cols.map((c, i) => ({
-      id: keys[i],
+      id: fakturKeyForHeader(c[0], fallbackKeys[i] || `col_${i}`),
       header: c[0],
       width: c[1],
       align: c[2],
-      accessor: keys[i],
+      accessor: fakturKeyForHeader(c[0], fallbackKeys[i] || `col_${i}`),
     })),
   });
 }
 function renderDetailTable() {
   const st = APP.state;
   const cols = APP.bootstrap.det_cols;
-  const keys = ["baris", "detail_opt_label", "detail_code", "keterangan", "detail_unit_label", "harga", "qty", "diskon", "dpp", "dpp_nl", "tarif_ppn", "ppn", "tarif_ppnbm", "ppnbm"];
+  const fallbackKeys = ["baris", "detail_opt_label", "detail_code", "keterangan", "detail_unit_label", "harga", "qty", "diskon", "dpp", "dpp_nl", "tarif_ppn", "ppn", "tarif_ppnbm", "ppnbm"];
   renderDataTable(document.getElementById("detailTableScroll"), {
     id: "detail",
-    rows: st.detail_rows.map((r, i) => ({ ...r, tarif_ppn: "12%", tarif_ppnbm: "0%", ppnbm: 0, __idx: r.original_idx, __row: i })),
+    rows: st.detail_rows.map((r, i) => ({ ...r, baris: i + 1, tarif_ppn: "12%", tarif_ppnbm: "0%", ppnbm: 0, __idx: r.original_idx, __row: i })),
     pageSize: 25,
     searchPlaceholder: "Cari detail barang, kode, atau baris...",
     getRowClass: (r, idx, pageIdx) => `${pageIdx % 2 === 0 ? "row-a" : "row-b"}${APP.selDetail.has(idx) ? " selected" : ""}`,
@@ -2543,17 +2869,17 @@ function renderDetailTable() {
       renderDetailTable();
     },
     columns: cols.map((c, i) => ({
-      id: keys[i],
+      id: detailKeyForHeader(c[0], fallbackKeys[i] || `col_${i}`),
       header: c[0],
       width: c[1],
       align: c[2],
       accessor: (r) => {
-        const key = keys[i];
+        const key = detailKeyForHeader(c[0], fallbackKeys[i] || `col_${i}`);
         if (["harga", "qty"].includes(key)) return fmtQty(r[key]);
         if (["diskon", "dpp", "dpp_nl", "ppn", "ppnbm"].includes(key)) return fmtIdr(r[key]);
         return r[key];
       },
-      sortAccessor: (r) => r[keys[i]],
+      sortAccessor: (r) => r[detailKeyForHeader(c[0], fallbackKeys[i] || `col_${i}`)],
     })),
   });
 }
@@ -3489,6 +3815,23 @@ function wireGlobalEvents() {
   document.getElementById("sidebarToggle").addEventListener("click", () => {
     setSidebarCollapsed(!document.getElementById("app").classList.contains("sidebar-collapsed"));
   });
+  const profileTrigger = document.getElementById("profileTrigger");
+  const profileMenu = document.querySelector(".profile-menu");
+  if (profileTrigger && profileMenu) {
+    profileTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = profileMenu.classList.toggle("open");
+      profileTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    document.addEventListener("click", () => {
+      profileMenu.classList.remove("open");
+      profileTrigger.setAttribute("aria-expanded", "false");
+    });
+  }
+  const profileLogout = document.getElementById("profileLogoutBtn");
+  if (profileLogout) profileLogout.addEventListener("click", logoutUser);
+  const notificationBtn = document.getElementById("notificationBtn");
+  if (notificationBtn) notificationBtn.addEventListener("click", () => toast("Tidak ada notifikasi baru.", "info"));
   document.getElementById("fileInput").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;

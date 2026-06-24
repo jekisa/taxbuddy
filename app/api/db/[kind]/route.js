@@ -1,5 +1,13 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { upsertDbEntry } from "../../../../lib/app-data";
+import {
+  applyBuyerDiscountsToActiveData,
+  loadWorkspace,
+  publicWorkspaceState,
+  saveWorkspace,
+  setWorkspaceCookie,
+} from "../../../../lib/workspace";
 
 export const runtime = "nodejs";
 
@@ -39,9 +47,27 @@ export async function POST(request, { params }) {
     }
 
     const appData = await upsertDbEntry(kind, nama, payloadFor(kind, body));
+    let changed = 0;
+    let state = null;
+
+    if (kind === "pembeli") {
+      const cookieStore = await cookies();
+      const workspace = await loadWorkspace(cookieStore);
+      state = workspace.state;
+      changed = applyBuyerDiscountsToActiveData(state, appData.db_pembeli || {}, nama);
+      if (changed) await saveWorkspace(workspace.id, state);
+      const res = NextResponse.json({
+        [`db_${kind}`]: appData[`db_${kind}`],
+        changed,
+        ...(changed ? { state: publicWorkspaceState(state) } : {}),
+      });
+      if (changed) setWorkspaceCookie(res, workspace.id);
+      return res;
+    }
+
     return NextResponse.json({
       [`db_${kind}`]: appData[`db_${kind}`],
-      changed: 0,
+      changed,
     });
   } catch (err) {
     return NextResponse.json({ error: err.message || "Data gagal disimpan." }, { status: 500 });

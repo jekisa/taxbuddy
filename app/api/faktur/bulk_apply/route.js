@@ -1,7 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getAppData } from "../../../../lib/app-data";
-import { loadWorkspace, publicWorkspaceState, saveWorkspace, setWorkspaceCookie } from "../../../../lib/workspace";
+import {
+  loadWorkspace,
+  publicWorkspaceState,
+  recalculateDiscountForInvoiceRefs,
+  saveWorkspace,
+  setWorkspaceCookie,
+} from "../../../../lib/workspace";
 
 export const runtime = "nodejs";
 
@@ -9,8 +15,8 @@ function validIndices(indices, total) {
   return (indices || []).filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < total);
 }
 
-function safeNumber(value) {
-  const n = Number(String(value || "").replace(",", ".").replace("%", "").trim());
+function parseDiscount(value) {
+  const n = Number.parseFloat(String(value || "").replace(",", ".").replace("%", "").trim());
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -40,6 +46,7 @@ export async function POST(request) {
     const source = mode === "penjual" ? appData.db_penjual || {} : appData.db_pembeli || {};
     const data = source[name] || {};
 
+    const discountRefs = [];
     for (const idx of indices) {
       const row = rows[idx];
       if (mode === "penjual") {
@@ -50,11 +57,13 @@ export async function POST(request) {
         row.nama_pembeli = data.nama || name;
         row.alamat_pembeli = data.alamat || "";
         row.id_tku_pembeli = data.no_dok || "";
-        row.diskon_rate = safeNumber(data.diskon_pct);
+        row.diskon_rate = parseDiscount(data.diskon_pct);
+        if (row.referensi) discountRefs.push(row.referensi);
       }
     }
 
     state.faktur_rows = rows;
+    if (mode === "pembeli") recalculateDiscountForInvoiceRefs(state, discountRefs, data.diskon_pct);
     await saveWorkspace(workspace.id, state);
     const label = scope === "all" ? "semua baris" : `${indices.length} baris`;
     const res = NextResponse.json({ state: publicWorkspaceState(state), label, name });

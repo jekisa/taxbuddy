@@ -541,9 +541,18 @@ def read_raw_excel(file_bytes,filename):
     hrow=0
     for i,row in enumerate(raw[:10]):
         if sum(1 for v in row if str(v).strip())>=3: hrow=i; break
-    headers=[str(v).strip() for v in raw[hrow]]
-    rows=[[str(v).strip() if v is not None else "" for v in row]
-          for row in raw[hrow+1:] if any(str(v).strip() for v in row)]
+    header_row=[str(v).strip() for v in raw[hrow]]
+    data_rows=[[str(v).strip() if v is not None else "" for v in row]
+               for row in raw[hrow+1:] if any(str(v).strip() for v in row)]
+    width=max([len(header_row)]+[len(row) for row in data_rows] or [0])
+    keep=[]
+    for idx in range(width):
+        header=header_row[idx] if idx < len(header_row) else ""
+        has_data=any(idx < len(row) and str(row[idx]).strip() for row in data_rows)
+        if header or has_data:
+            keep.append(idx)
+    headers=[(header_row[idx] if idx < len(header_row) and header_row[idx] else f"Kolom {idx+1}") for idx in keep]
+    rows=[[row[idx] if idx < len(row) else "" for idx in keep] for row in data_rows]
     return headers,rows
 
 def apply_mapping_and_process(headers,rows,mapping):
@@ -778,32 +787,58 @@ def apply_buyer_discounts_to_active_data(state,db_pembeli,buyer_name=None):
         pct=parse_num(d.get("diskon_pct",""))
         names={norm_party_name(name),norm_party_name(d.get("nama",""))}
         names={n for n in names if n}
-        targets.append((names,pct))
+        npwp=re.sub(r"\D+","",str(d.get("npwp","")))
+        no_dok=re.sub(r"\D+","",str(d.get("no_dok","")))
+        targets.append({"names":names,"pct":pct,"npwp":npwp,"no_dok":no_dok})
     if not targets: return 0
 
-    faktur_to_buyer={}
+    faktur_to_buyer={}; faktur_to_ids={}
     for fr in faktur_rows:
         buyer=norm_party_name(fr.get("nama_pembeli",""))
         if buyer: faktur_to_buyer[fr["referensi"]]=buyer
+        npwp=re.sub(r"\D+","",str(fr.get("npwp_pembeli","")))
+        no_dok=re.sub(r"\D+","",str(fr.get("no_dok_pembeli","") or fr.get("id_tku_pembeli","")))
+        if npwp or no_dok:
+            faktur_to_ids[fr["referensi"]]={"npwp":npwp,"no_dok":no_dok}
 
     changed=0
     for r in processed:
         src_name=norm_party_name(r.get("nama",""))
         buyer_name_for_ref=faktur_to_buyer.get(r["faktur"],"")
-        for names,pct in targets:
-            if src_name in names or buyer_name_for_ref in names:
-                apply_tax_calculation(r,pct)
+        ids=faktur_to_ids.get(r["faktur"],{})
+        for target in targets:
+            if (src_name in target["names"] or
+                buyer_name_for_ref in target["names"] or
+                (target["npwp"] and ids.get("npwp")==target["npwp"]) or
+                (target["no_dok"] and ids.get("no_dok")==target["no_dok"])):
+                apply_tax_calculation(r,target["pct"])
                 changed+=1
                 break
+
+    unique_active_names={norm_party_name(r.get("nama","")) for r in processed if norm_party_name(r.get("nama",""))}
+    if not changed and len(targets)==1 and len(unique_active_names)==1:
+        # If the uploaded file uses an internal/short customer label while the DB uses
+        # the legal buyer name, a single-customer workspace can still be updated safely.
+        pct=targets[0]["pct"]
+        for r in processed:
+            apply_tax_calculation(r,pct)
+            changed+=1
 
     for fr in faktur_rows:
         buyer=norm_party_name(fr.get("nama_pembeli",""))
         if not buyer:
             src=next((norm_party_name(r.get("nama","")) for r in processed if r["faktur"]==fr["referensi"]),"")
             buyer=src
-        for names,pct in targets:
-            if buyer in names:
-                fr["diskon_rate"]=pct
+        ids={
+            "npwp": re.sub(r"\D+","",str(fr.get("npwp_pembeli",""))),
+            "no_dok": re.sub(r"\D+","",str(fr.get("no_dok_pembeli","") or fr.get("id_tku_pembeli",""))),
+        }
+        for target in targets:
+            if (buyer in target["names"] or
+                (target["npwp"] and ids["npwp"]==target["npwp"]) or
+                (target["no_dok"] and ids["no_dok"]==target["no_dok"]) or
+                (changed and len(targets)==1 and len(unique_active_names)==1)):
+                fr["diskon_rate"]=target["pct"]
                 break
 
     if changed:
@@ -931,6 +966,7 @@ def export_dlm_reference_sheet(ws,title,labels):
 
 def export_faktur_sheet(ws,faktur_rows,npwp_penjual=""):
     brd=_brd(); ca=_al(); la=_al("left")
+    ws.merge_cells("A1:B1")
     ws.cell(row=1,column=1,value="NPWP Penjual")
     c=ws.cell(row=1,column=3,value=npwp_penjual); c.number_format="@"
     HDRS=["Baris","Tanggal Faktur","Jenis Faktur","Kode Transaksi","Keterangan Tambahan",
@@ -946,10 +982,13 @@ def export_faktur_sheet(ws,faktur_rows,npwp_penjual=""):
         def wt(col,val,_er=er):
             c=ws.cell(row=_er,column=col,value=str(val) if val else "")
             c.font=c11; c.alignment=ca; c.border=brd; c.number_format="@"
+        def wd(col,val,_er=er):
+            c=ws.cell(row=_er,column=col,value=val if val else "")
+            c.font=c11; c.alignment=ca; c.border=brd; c.number_format="mm-dd-yy"
         def wl(col,val,_er=er):
             c=ws.cell(row=_er,column=col,value=str(val) if val else "")
             c.font=c11; c.alignment=la; c.border=brd
-        wt(1,r["baris"]); wt(2,r["tgl_faktur"]); wt(3,r["jenis_faktur"]); wt(4,r["kode_transaksi"])
+        wt(1,i+1); wd(2,_parse_ddmmyyyy_date(r["tgl_faktur"]) or r["tgl_faktur"]); wt(3,r["jenis_faktur"]); wt(4,r["kode_transaksi"])
         wt(5,r["ket_tambahan"]); wt(6,r["dok_pendukung"]); wt(7,r["referensi"]); wt(8,r["cap_fasilitas"])
         wt(9,r["id_tku_penjual"]); wt(10,r["npwp_pembeli"]); wt(11,r["jenis_id"]); wt(12,r["negara"])
         wt(13,r["no_dok_pembeli"]); wl(14,r["nama_pembeli"]); wl(15,r["alamat_pembeli"])
@@ -963,7 +1002,7 @@ def export_faktur_sheet(ws,faktur_rows,npwp_penjual=""):
         c=ws.cell(row=end_row,column=col,value=None)
         c.font=c11; c.alignment=ca; c.border=brd
     ws.row_dimensions[end_row].height=16
-    autofit_columns(ws); ws.freeze_panes="A4"
+    autofit_columns(ws); ws.freeze_panes=None
 
 def export_detail_faktur_sheet(ws,processed_data,faktur_rows):
     brd=_brd(); ca=_al(); la=_al("left"); ra=_al("right")
@@ -992,7 +1031,7 @@ def export_detail_faktur_sheet(ws,processed_data,faktur_rows):
         wn(6,round2(r["harga"])); wn(7,round2(r["qty"]))
         wn(8,round2(r.get("diskon",0))); wn(9,round2(r["dpp"]))
         wn(10,round2(r["dpp_nl"])); wn(11,12); wn(12,round2(r["ppn"]))
-        wn(13,0); wn(14,0)
+        wt(13,""); wt(14,"")
         ws.row_dimensions[er].height=16
     end_row=len(ordered_details)+2
     ce=ws.cell(row=end_row,column=1,value="END")
@@ -1001,7 +1040,7 @@ def export_detail_faktur_sheet(ws,processed_data,faktur_rows):
     for col in range(2,15):
         c=ws.cell(row=end_row,column=col,value=None); c.font=c11; c.border=brd
     ws.row_dimensions[end_row].height=16
-    autofit_columns(ws); ws.freeze_panes="A2"
+    autofit_columns(ws); ws.freeze_panes=None
 
 
 # ---- Generate XML -----------------------------------------------------------------
@@ -1284,7 +1323,9 @@ def enforce_trial_feature_locks():
         return subscription_expired_response()
     if sub.get("status")=="active":
         return None
-    if path.startswith("/api/dlm/") or path == "/api/dlm":
+    dlm_state_edit_paths=("/api/dlm/bulk_apply","/api/dlm/trx_defaults","/api/dlm/company")
+    is_dlm_state_edit=path in dlm_state_edit_paths or path.startswith("/api/dlm/row/")
+    if (path.startswith("/api/dlm/") or path == "/api/dlm") and not is_dlm_state_edit:
         return trial_feature_locked_response("Doc Lain Masukan")
     if path.startswith("/api/sdl/") or path == "/api/sdl":
         return trial_feature_locked_response("SPT Dokumen Lain")
@@ -1730,9 +1771,7 @@ def export_xlsx():
         return jsonify({"error":"Lengkapi data penjual dan pembeli sebelum export.",
                         "blockers":blockers}),400
     wb=openpyxl.Workbook()
-    ws1=wb.active; ws1.title="PajakKeluaran"
-    export_tpk_sheet(ws1,st["processed"],st["dup_map"])
-    ws2=wb.create_sheet("Faktur")
+    ws2=wb.active; ws2.title="Faktur"
     npwp_p=(st["faktur_rows"][0].get("id_tku_penjual","")[:16] if st["faktur_rows"] else "")
     export_faktur_sheet(ws2,st["faktur_rows"],npwp_p)
     ws3=wb.create_sheet("DetailFaktur")

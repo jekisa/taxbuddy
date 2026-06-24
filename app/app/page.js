@@ -37,7 +37,34 @@ export default function WorkspacePage() {
         <div className="main">
           <header id="topbar">
             <div className="status" id="statusLabel" />
-            <div className="stats" id="statsFrame" />
+            <div className="topbar-actions">
+              <div className="stats" id="statsFrame" />
+              <button className="topbar-icon-btn" id="notificationBtn" aria-label="Notifikasi">
+                <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M10.3 21a2 2 0 0 0 3.4 0" />
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                </svg>
+              </button>
+              <div className="profile-menu">
+                <button className="profile-trigger" id="profileTrigger" aria-label="Profil pengguna" aria-expanded="false">
+                  <span className="profile-avatar" id="profileAvatar">TB</span>
+                  <span className="profile-copy">
+                    <strong id="profileName">TaxBuddy</strong>
+                    <small id="profilePlan">Workspace</small>
+                  </span>
+                  <svg className="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                <div className="profile-dropdown" id="profileDropdown">
+                  <div className="profile-dropdown-head">
+                    <strong id="profileDropdownName">TaxBuddy</strong>
+                    <span id="profileDropdownEmail">Workspace</span>
+                  </div>
+                  <button type="button" id="profileLogoutBtn">Logout</button>
+                </div>
+              </div>
+            </div>
           </header>
           <main id="body" />
         </div>

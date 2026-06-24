@@ -6,7 +6,8 @@
   "scripts": {
     "backend": "cross-env PORT=5000 python app.py",
     "build": "python -m py_compile app.py && node --check static/js/app.js && node --check public/static/js/app.js && next build",
-    "dev": "concurrently -k -n NEXT,API -c cyan,green \"next dev\" \"npm run backend\"",
+    "dev": "concurrently -k -n NEXT,API -c cyan,green \"next dev --webpack\" \"npm run backend\"",
+    "dev:turbo": "concurrently -k -n NEXT,API -c cyan,green \"next dev --turbo\" \"npm run backend\"",
     "start": "next start"
   },
   "dependencies": {
